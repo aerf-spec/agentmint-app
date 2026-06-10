@@ -37,8 +37,17 @@ else echo "FAIL  expected $EXPECTED"; echo "      got      $ACTUAL"; exit 1; fi
 `;
 }
 
+function createPacketHashModuleSource(hash: string) {
+  return `export const PACKET_HASH = "${hash}";\n`;
+}
+
 async function ensureDirForFile(filePath: string) {
   await mkdir(dirname(filePath), { recursive: true });
+}
+
+async function writePacketHashModule(filePath: string, hash: string) {
+  await ensureDirForFile(filePath);
+  await writeFile(filePath, createPacketHashModuleSource(hash), "utf8");
 }
 
 export async function writePacketArtifacts(packet: PacketData, rootDir = process.cwd()) {
@@ -52,9 +61,7 @@ export async function writePacketArtifacts(packet: PacketData, rootDir = process
   await writeFile(paths.packetJsonPath, canonicalPacket);
   await writeFile(paths.verifyScriptPath, buildVerifyScript(hash), "utf8");
   await chmod(paths.verifyScriptPath, 0o755);
-
-  await ensureDirForFile(paths.packetHashModulePath);
-  await writeFile(paths.packetHashModulePath, `export const PACKET_HASH = "${hash}";\n`, "utf8");
+  await writePacketHashModule(paths.packetHashModulePath, hash);
 
   return {
     hash,

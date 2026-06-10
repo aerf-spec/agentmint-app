@@ -14,6 +14,8 @@ import {
 } from "@/scripts/build-packet";
 
 const execFileAsync = promisify(execFile);
+const SCRIPT_PATH = "/Users/aniketh/agentmint-app/scripts/build-packet.ts";
+const SCRIPT_URL = `file://${SCRIPT_PATH}`;
 
 describe("build-packet script", () => {
   afterEach(() => {
@@ -41,23 +43,18 @@ describe("build-packet script", () => {
   });
 
   it("detects whether the script should run from the cli", async () => {
-    const scriptPath = "/Users/aniketh/agentmint-app/scripts/build-packet.ts";
-    const currentUrl = `file://${scriptPath}`;
-
-    expect(shouldRunBuildPacketFromCli(undefined, currentUrl)).toBe(false);
-    expect(shouldRunBuildPacketFromCli("/tmp/elsewhere.ts", currentUrl)).toBe(false);
-    expect(shouldRunBuildPacketFromCli(scriptPath, currentUrl)).toBe(true);
+    expect(shouldRunBuildPacketFromCli(undefined, SCRIPT_URL)).toBe(false);
+    expect(shouldRunBuildPacketFromCli("/tmp/elsewhere.ts", SCRIPT_URL)).toBe(false);
+    expect(shouldRunBuildPacketFromCli(SCRIPT_PATH, SCRIPT_URL)).toBe(true);
   });
 
   it("runs the cli path successfully when directly invoked", async () => {
-    const scriptPath = "/Users/aniketh/agentmint-app/scripts/build-packet.ts";
-    const currentUrl = `file://${scriptPath}`;
     const runner = vi.fn().mockResolvedValue(undefined);
 
     await expect(
       runBuildPacketFromCli({
-        currentUrl,
-        invokedPath: scriptPath,
+        currentUrl: SCRIPT_URL,
+        invokedPath: SCRIPT_PATH,
         runner,
       }),
     ).resolves.toBe(true);
@@ -66,12 +63,10 @@ describe("build-packet script", () => {
 
   it("supports the cli path and exits on runner failure", async () => {
     const cwd = await mkdtemp(join(tmpdir(), "agentmint-script-"));
-    const scriptPath = "/Users/aniketh/agentmint-app/scripts/build-packet.ts";
-    const currentUrl = `file://${scriptPath}`;
 
     await execFileAsync(
       "/Users/aniketh/agentmint-app/node_modules/.bin/tsx",
-      ["/Users/aniketh/agentmint-app/scripts/build-packet.ts"],
+      [SCRIPT_PATH],
       { cwd },
     );
 
@@ -87,8 +82,8 @@ describe("build-packet script", () => {
 
     await expect(
       runBuildPacketFromCli({
-        currentUrl,
-        invokedPath: scriptPath,
+        currentUrl: SCRIPT_URL,
+        invokedPath: SCRIPT_PATH,
         onError,
         exit,
         runner,
