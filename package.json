@@ -5,11 +5,15 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "local": "bash scripts/start-local.sh",
+    "typecheck": "tsc --noEmit",
     "build:packet": "tsx scripts/build-packet.ts",
     "build": "npm run build:packet && next build",
+    "build:clean": "rm -rf .next out && npm run build",
     "start": "next start",
     "test": "vitest run --coverage",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "verify": "npm run typecheck && npm test && npm run build"
   },
   "dependencies": {
     "next": "^14.2.0",
