@@ -1,0 +1,24 @@
+@media print {
+  :root {
+    --yellow: #b45309;
+    --green: #047857;
+  }
+
+  html,
+  body {
+    background: #ffffff;
+    color: #000000;
+  }
+
+  .dot-grid,
+  .hero-gradient,
+  .nav,
+  .no-print {
+    display: none !important;
+  }
+
+  .artifact-card {
+    page-break-before: always;
+    border-color: #ccc !important;
+  }
+}
