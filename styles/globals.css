@@ -1,9 +1,9 @@
 :root {
   --bg: #0b1120;
-  --surface: #151d2e;
-  --code-bg: #0d1321;
-  --code-border: #1e293b;
-  --border: #1e293b;
+  --surface: #141e30;
+  --code-bg: #0d1117;
+  --code-border: #1e3a5f;
+  --border: #1e3a5f;
   --blue: #3b82f6;
   --green: #10b981;
   --red: #ef4444;
@@ -12,7 +12,7 @@
   --fg: #e2e8f0;
   --text-primary: var(--fg);
   --text-secondary: #94a3b8;
-  --text-tertiary: #64748b;
+  --text-tertiary: #475569;
   --seal: var(--yellow);
   --verified: var(--green);
   --flag: var(--red);
@@ -110,7 +110,7 @@ code,
 
 html[data-dev-viewport="390"],
 html[data-dev-viewport="360"] {
-  background: #020617;
+  background: var(--bg);
 }
 
 html[data-dev-viewport="390"] .site-shell,
