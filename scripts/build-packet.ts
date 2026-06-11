@@ -1,10 +1,10 @@
 import { pathToFileURL } from "node:url";
 
 import { writePacketArtifacts } from "../lib/packet-build";
-import claraHealthPacket from "../lib/packet-data";
+import sampleHealthPacket from "../lib/packet-data";
 
 export async function runBuildPacket() {
-  await writePacketArtifacts(claraHealthPacket);
+  await writePacketArtifacts(sampleHealthPacket);
 }
 
 export function logBuildPacketError(error: unknown) {

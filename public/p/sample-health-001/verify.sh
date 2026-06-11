@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-EXPECTED="8d48e9f63b48299aeadb28b323ea29a5edf0c89c2bdec45ebb54ef36cee1fa8b"
+EXPECTED="af05d3c005329dc77321813d873d826f1b69cbd66df6fcfde813dacb7ffd6cb2"
 URL="https://agentmint.run/p/sample-health-001/packet.json"
 ACTUAL=$(curl -s "$URL" | sha256sum | cut -d' ' -f1)
 if [ "$ACTUAL" = "$EXPECTED" ]; then echo "OK  packet matches attested hash $EXPECTED";

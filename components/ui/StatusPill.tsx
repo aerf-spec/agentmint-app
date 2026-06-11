@@ -12,7 +12,7 @@ const BASE_STYLE: CSSProperties = {
   padding: "3px 9px",
   borderRadius: "3px",
   fontFamily: "var(--font-mono), monospace",
-  fontSize: "10px",
+  fontSize: "11px",
   fontWeight: 600,
   letterSpacing: "0.08em",
   lineHeight: 1,

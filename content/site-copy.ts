@@ -15,7 +15,8 @@ export const siteCopy = {
         "Your SOC 2 doesn't cover the AI block. These questions require evidence that doesn't exist yet — we produce it in 48 hours, attested under your name.",
       primaryCta: "Send your questionnaire →",
       secondaryCta: "See a sample packet →",
-      footnote: "$3,500 standard · $7,500 urgent · paid before kickoff · 48-hour delivery",
+      footnote:
+        "$3,500 standard · 48-hour delivery · paid before kickoff · refunded if it doesn't clear review",
     },
     credential: {
       body:
@@ -56,21 +57,17 @@ export const siteCopy = {
       offers: {
         designPartner: {
           kicker: "DESIGN PARTNER",
-          pill: "2 SLOTS",
-          title: "No cost — real stalled deals only; you become a reference",
+          pill: "TWO SLOTS REMAINING",
+          title: "Free",
+          body: "Real stalled deals only; you become a reference.",
           cta: "Apply by email →",
         },
         standard: {
-          kicker: "STANDARD SPRINT",
+          kicker: "STANDARD ENGAGEMENT",
           price: "$3,500",
-          body: "One agent · one questionnaire · 48-hour delivery",
-          cta: "Reserve standard sprint →",
-        },
-        urgent: {
-          kicker: "URGENT SPRINT",
-          price: "$7,500",
-          body: "Buyer deadline this week · expedited review and delivery",
-          cta: "Reserve urgent sprint →",
+          body: "My time is refundable.",
+          continuous: "CONTINUOUS · 48-HOUR DELIVERY",
+          cta: "Reserve standard engagement →",
         },
       },
     },
@@ -81,7 +78,7 @@ export const siteCopy = {
   },
   packet: {
     metadata: {
-      title: "ClaraHealth prior-auth-v2.1 — AI Vendor Evidence Packet (sample)",
+      title: "SampleHealth prior-auth-v2.1 — AI Vendor Evidence Packet (sample)",
       description:
         "Twelve attested AI governance artifacts in the format health plan security reviews consume.",
     },
@@ -89,7 +86,7 @@ export const siteCopy = {
       verifyLabel: "Verify",
     },
     sampleBanner:
-      "SAMPLE — ClaraHealth is fictional. Format, field depth, and gap handling are exactly what attested packets contain.",
+      "SAMPLE — SampleHealth is fictional. Format, field depth, and gap handling are exactly what attested packets contain.",
     artifactsLabel: "AI VENDOR EVIDENCE ARTIFACTS",
     exit: {
       copy: "Your agent needs one of these. Send us your questionnaire →",

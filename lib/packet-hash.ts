@@ -1,1 +1,1 @@
-export const PACKET_HASH = "8d48e9f63b48299aeadb28b323ea29a5edf0c89c2bdec45ebb54ef36cee1fa8b";
+export const PACKET_HASH = "af05d3c005329dc77321813d873d826f1b69cbd66df6fcfde813dacb7ffd6cb2";

@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import claraHealthPacket from "@/lib/packet-data";
+import sampleHealthPacket from "@/lib/packet-data";
 
 vi.mock("@/lib/packet-hash", () => ({
   PACKET_HASH: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef",
@@ -15,9 +15,9 @@ describe("sample packet page", () => {
 
     expect(module.dynamic).toBe("force-static");
     expect(module.metadata.title).toBe(
-      "ClaraHealth prior-auth-v2.1 — AI Vendor Evidence Packet (sample)",
+      "SampleHealth prior-auth-v2.1 — AI Vendor Evidence Packet (sample)",
     );
-    expect(screen.getByText(/SAMPLE — ClaraHealth is fictional/i)).toBeInTheDocument();
+    expect(screen.getByText(/SAMPLE — SampleHealth is fictional/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^Verify$/i })).toHaveAttribute("href", "#verification");
     expect(screen.getAllByText(/SHA-256 12345678…/i).length).toBeGreaterThan(0);
     expect(screen.getByText("Executive Summary")).toBeInTheDocument();
@@ -31,7 +31,7 @@ describe("sample packet page", () => {
       node.textContent?.trim(),
     );
     expect(artifactTitles).toEqual(
-      claraHealthPacket.artifacts.map(
+      sampleHealthPacket.artifacts.map(
         (artifact) => `§${artifact.id} — ${artifact.title}${artifact.detachable ? " (Detachable)" : ""}`,
       ),
     );

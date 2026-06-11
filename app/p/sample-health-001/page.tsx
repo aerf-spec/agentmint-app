@@ -12,7 +12,7 @@ import { HashDisplay } from "@/components/ui/HashDisplay";
 import { MonoLabel } from "@/components/ui/MonoLabel";
 import { siteCopy } from "@/content/site-copy";
 import { PACKET_HASH } from "@/lib/packet-hash";
-import claraHealthPacket from "@/lib/packet-data";
+import sampleHealthPacket from "@/lib/packet-data";
 import { formatPacketHashPreview } from "@/lib/packet-public";
 
 export const dynamic = "force-static";
@@ -30,7 +30,7 @@ export default function SamplePacketPage() {
     <div className="filing">
       <nav className="packet-nav no-print">
         <div className="packet-nav__inner">
-          <p className="packet-nav__identity">{`${claraHealthPacket.metadata.packet_id} · SHA-256 ${hashPreview}`}</p>
+          <p className="packet-nav__identity">{`${sampleHealthPacket.metadata.packet_id} · SHA-256 ${hashPreview}`}</p>
           <a href="#verification" className="packet-nav__link">
             {copy.nav.verifyLabel}
           </a>
@@ -41,28 +41,28 @@ export default function SamplePacketPage() {
 
       <main className="container packet-page">
         <div className="packet-page__content">
-          <PacketCover data={claraHealthPacket} hash={PACKET_HASH} />
-          <ExecutiveSummaryBlock summary={claraHealthPacket.executive_summary} />
-          <GapRegisterTable gaps={claraHealthPacket.gap_register} />
+          <PacketCover data={sampleHealthPacket} hash={PACKET_HASH} />
+          <ExecutiveSummaryBlock summary={sampleHealthPacket.executive_summary} />
+          <GapRegisterTable gaps={sampleHealthPacket.gap_register} />
 
           <section className="packet-section">
             <MonoLabel>{copy.artifactsLabel}</MonoLabel>
             <div className="packet-artifacts">
-              {claraHealthPacket.artifacts.map((artifact) => (
+              {sampleHealthPacket.artifacts.map((artifact) => (
                 <ArtifactCard
                   key={artifact.id}
                   artifact={artifact}
-                  metadata={claraHealthPacket.metadata}
+                  metadata={sampleHealthPacket.metadata}
                 />
               ))}
             </div>
           </section>
 
-          <OwaspTable entries={claraHealthPacket.owasp_llm_assessment} />
-          <ChaiCrosswalkBlock entries={claraHealthPacket.chai_crosswalk} />
+          <OwaspTable entries={sampleHealthPacket.owasp_llm_assessment} />
+          <ChaiCrosswalkBlock entries={sampleHealthPacket.chai_crosswalk} />
           <AttestationBlock
-            attestation={claraHealthPacket.attestation}
-            metadata={claraHealthPacket.metadata}
+            attestation={sampleHealthPacket.attestation}
+            metadata={sampleHealthPacket.metadata}
             hash={PACKET_HASH}
           />
           <VerificationSection hash={PACKET_HASH} />
@@ -81,7 +81,7 @@ export default function SamplePacketPage() {
       <footer className="packet-footer">
         <div className="packet-footer__inner">
           <p className="packet-footer__colophon">
-            {`${claraHealthPacket.metadata.packet_id} · SHA-256 ${hashPreview} · ${claraHealthPacket.metadata.generated_at}`}
+            {`${sampleHealthPacket.metadata.packet_id} · SHA-256 ${hashPreview} · ${sampleHealthPacket.metadata.generated_at}`}
           </p>
           <a href="https://github.com/aerf-spec/aerf" className="packet-footer__link">
             {copy.footer.standardLabel}

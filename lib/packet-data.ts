@@ -1,4 +1,5 @@
 import type { Artifact, ArtifactField, ArtifactSection, GapEntry, PacketData } from "@/lib/types";
+import { SAMPLE_VENDOR } from "./sample-vendor";
 
 function field(
   machine_key: string,
@@ -27,11 +28,11 @@ const gapIndependentRedTeam: GapEntry = {
   id: "G-01",
   title: "Independent adversarial red-team not yet complete",
   description:
-    "ClaraHealth has completed internal prompt-injection and jailbreak testing, but the scheduled external red-team exercise has not yet run against the June 2026 release candidate.",
+    `${SAMPLE_VENDOR.short} has completed internal prompt-injection and jailbreak testing, but the scheduled external red-team exercise has not yet run against the June 2026 release candidate.`,
   remediation:
     "Complete the contracted third-party red-team, document findings, and append the signed report addendum to Artifact 02 before production expansion.",
   owner_name: "Maya Chen",
-  owner_title: "Chief Information Security Officer",
+  owner_title: "Co-founder & CTO",
   target_date: "2026-07-15",
   compensating_control:
     "High-risk prompts are blocked by policy middleware, privileged tools require human approval, and production traffic is rate-limited with manual escalation.",
@@ -55,7 +56,7 @@ const gapDeletionAttestations: GapEntry = {
   id: "G-03",
   title: "Subprocessor deletion attestations are pending for the last retention cycle",
   description:
-    "Customer deletion requests are executed in ClaraHealth systems on time, but signed deletion attestations from one analytics subprocessor have not yet been returned for the May cycle.",
+    `Customer deletion requests are executed in ${SAMPLE_VENDOR.short} systems on time, but signed deletion attestations from one analytics subprocessor have not yet been returned for the May cycle.`,
   remediation:
     "Collect the missing signed attestations, attach them to the retention packet, and update the subprocessor scorecard with a hard SLA.",
   owner_name: "Elena Park",
@@ -83,7 +84,7 @@ const gapEvalCoverage: GapEntry = {
   id: "G-05",
   title: "Shadow-mode evaluation set is below target coverage for oncology denials",
   description:
-    "The regression suite covers the top payer workflows, but oncology-denial examples are still below the target sample count required by ClaraHealth's release rubric.",
+    `The regression suite covers the top payer workflows, but oncology-denial examples are still below the target sample count required by ${SAMPLE_VENDOR.short}'s release rubric.`,
   remediation:
     "Expand the labeled evaluation set with the queued oncology cases and rerun acceptance thresholds before broader rollout to commercial plans.",
   owner_name: "Ravi Patel",
@@ -139,7 +140,7 @@ const artifacts: Artifact[] = [
     detachable: false,
     sections: [
       section("System Boundary", [
-        field("system_name", "System", "ClaraHealth prior-auth-v2.1", "ART-01-001"),
+        field("system_name", "System", `${SAMPLE_VENDOR.short} prior-auth-v2.1`, "ART-01-001"),
         field(
           "decision_scope",
           "Decision Scope",
@@ -161,7 +162,7 @@ const artifacts: Artifact[] = [
       ]),
       section("Accountability", [
         field("business_owner", "Business Owner", "Dana Alvarez, VP Revenue Cycle", "ART-01-005"),
-        field("security_owner", "Security Owner", "Maya Chen, CISO", "ART-01-006"),
+        field("security_owner", "Security Owner", "Maya Chen, Co-founder & CTO", "ART-01-006"),
         field("buyer_mode", "Buyer Review Mode", "Conditional approval packet with explicit gaps", "ART-01-007"),
         field(
           "attestation_basis",
@@ -258,7 +259,7 @@ const artifacts: Artifact[] = [
       {
         question: "Do any customer prompts or outputs feed future model training?",
         answer:
-          "No. ClaraHealth contractually disables provider training use, limits runtime data to the active workflow, and documents this control in the vendor due-diligence record.",
+          `No. ${SAMPLE_VENDOR.short} contractually disables provider training use, limits runtime data to the active workflow, and documents this control in the vendor due-diligence record.`,
       },
       {
         question: "How are third-party changes surfaced to buyers?",
@@ -548,7 +549,7 @@ const artifacts: Artifact[] = [
         field("export_mode", "Export Mode", "Static export; buyer-downloadable with stable hash", "ART-12-004"),
       ]),
       section("Handoff Controls", [
-        field("handoff_owner", "Handoff Owner", "Maya Chen, CISO", "ART-12-005"),
+        field("handoff_owner", "Handoff Owner", "Maya Chen, Co-founder & CTO", "ART-12-005"),
         field("buyer_contact", "Buyer Contact", "security-review@northwindhealth.example", "ART-12-006"),
         field("format_standard", "Format Standard", "AERF-compatible evidence packet", "ART-12-007"),
         field("approval_route", "Approval Route", "Packet hash, attestation, and footer all reference the same build artifact", "ART-12-008"),
@@ -570,10 +571,10 @@ const artifacts: Artifact[] = [
   },
 ];
 
-export const claraHealthPacket: PacketData = {
+export const sampleHealthPacket: PacketData = {
   metadata: {
     packet_id: "sample-health-001",
-    vendor: "ClaraHealth",
+    vendor: SAMPLE_VENDOR.name,
     jurisdiction: "United States",
     system: "prior-auth-v2.1",
     version: "2.1.0",
@@ -583,11 +584,11 @@ export const claraHealthPacket: PacketData = {
     generated_at: "2026-06-10T14:12:00Z",
     methodology_version: "AERF 0.3 / AgentMint packet rubric 2026-06",
     attested_by_name: "Maya Chen",
-    attested_by_title: "Chief Information Security Officer",
+    attested_by_title: "Co-founder & CTO",
   },
   executive_summary: {
     system_description:
-      "ClaraHealth prior-auth-v2.1 drafts payer-facing prior-authorization rationale for healthcare revenue-cycle teams. The system retrieves plan policies, structures reviewer notes, and produces a cited draft for human approval; it does not autonomously approve, deny, or transmit payer decisions.",
+      `${SAMPLE_VENDOR.short} prior-auth-v2.1 drafts payer-facing prior-authorization rationale for healthcare revenue-cycle teams. The system retrieves plan policies, structures reviewer notes, and produces a cited draft for human approval; it does not autonomously approve, deny, or transmit payer decisions.`,
     status_line:
       "Twelve attested artifacts are included. Seven open gaps remain, each explicitly owned, dated, and bounded by a compensating control that is live today.",
     top_gaps: [
@@ -597,13 +598,13 @@ export const claraHealthPacket: PacketData = {
     ],
     deal_context:
       "Prepared for a healthcare-plan security review where the buyer requested AI-specific evidence beyond SOC 2 and standard vendor due-diligence materials.",
-    contact: "Packet owner: security@clarahealth.example",
+    contact: `Packet owner: cto@${SAMPLE_VENDOR.domain}`,
   },
   artifacts,
   gap_register: gapRegister,
   attestation: {
     statement:
-      "I attest that this packet accurately describes ClaraHealth prior-auth-v2.1 as deployed for buyer review on June 10, 2026; cited controls are implemented as stated, and every known material gap is explicitly disclosed with an owner, target date, and compensating control.",
+      `I attest that this packet accurately describes ${SAMPLE_VENDOR.short} prior-auth-v2.1 as deployed for buyer review on June 10, 2026; cited controls are implemented as stated, and every known material gap is explicitly disclosed with an owner, target date, and compensating control.`,
     explicit_non_claims: [
       "This packet does not claim that the model is error-free or clinically deterministic.",
       "This packet does not replace buyer-specific legal, privacy, or procurement review.",
@@ -709,4 +710,4 @@ export const claraHealthPacket: PacketData = {
   ],
 };
 
-export default claraHealthPacket;
+export default sampleHealthPacket;
