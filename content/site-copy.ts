@@ -6,21 +6,19 @@ export const siteCopy = {
       ctaShort: "Send questionnaire →",
     },
     hero: {
-      eyebrow: "AI VENDOR PROCUREMENT · HEALTHCARE RCM",
+      eyebrow: "AI VENDOR PROCUREMENT · HEALTHCARE",
       headlineMono: "Squash",
       headlineSerif: "procurement.",
       subhead:
-        "Your deal is in InfoSec review. The CISO sent follow-up questions you can't answer. This is the packet that gets it out.",
+        "Your deal is in security review. The follow-up questions just landed. This is the packet that clears them.",
       support:
-        "Your SOC 2 doesn't cover the AI block. These questions require evidence that doesn't exist yet — we produce it in 48 hours, attested under your name.",
+        "Your SOC 2 doesn't cover the AI block. We produce the missing evidence in 48 hours, attested under your name.",
       primaryCta: "Send your questionnaire →",
       secondaryCta: "See a sample packet →",
-      footnote:
-        "$3,500 standard · 48-hour delivery · paid before kickoff · refunded if it doesn't clear review",
     },
     credential: {
       body:
-        "Six years at Capital One reviewing AI vendors from the buyer side. I led API security controls, built ML fraud detection at 10,000 TPS, and got Google Vertex AI through C1's approval a year ahead of schedule. I know what a health plan CISO needs to see.",
+        "Six years at Capital One reviewing AI vendors from the buyer side. API security controls, ML fraud detection at 10,000 TPS, Google Vertex AI through approval a year early. I know what a health plan CISO needs to see.",
       byline: "Aniketh Maddipati, founder · ex-Capital One · NYC",
     },
     steps: {
@@ -31,27 +29,27 @@ export const siteCopy = {
           day: "DAY 0",
           title: "Send the questionnaire",
           body:
-            "Forward your buyer's security questionnaire. We isolate the AI-specific block within hours.",
+            "Forward your buyer's questionnaire. We isolate the AI-specific block within hours.",
         },
         {
           number: "02",
           day: "DAY 1",
           title: "Answer 18 questions",
           body:
-            "We draft from your evidence; you answer only what no document can — owners, dates, mechanisms.",
+            "We draft from your evidence. You confirm owners, dates, and mechanisms.",
         },
         {
           number: "03",
           day: "DAY 2",
           title: "Attest and submit",
           body:
-            "Twelve artifacts, honest gap register, hash-verified. You sign it; your buyer's review proceeds.",
+            "Twelve artifacts, honest gap register, hash-verified. You sign it; review proceeds.",
         },
       ],
     },
     intake: {
       label: "SEND YOUR QUESTIONNAIRE",
-      intro: "We review every submission personally and respond within 24 hours.",
+      intro: "We review every submission personally. Response within 24 hours.",
       calendarCta: "Book a 15-minute scoping call →",
       mailtoLabel: "Email your questionnaire to aniketh@agentmint.run",
       offers: {
@@ -66,7 +64,7 @@ export const siteCopy = {
           kicker: "STANDARD ENGAGEMENT",
           price: "$3,500",
           body: "My time is refundable.",
-          continuous: "CONTINUOUS · 48-HOUR DELIVERY",
+          continuous: "48-HOUR DELIVERY · CONTINUOUS",
           cta: "Reserve standard engagement →",
         },
       },

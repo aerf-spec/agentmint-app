@@ -52,7 +52,6 @@ export default function HomePage() {
                   {copy.hero.secondaryCta}
                 </a>
               </div>
-              <p className="home-hero__footnote">{copy.hero.footnote}</p>
             </div>
 
             <div className="hero-right" aria-hidden="true">

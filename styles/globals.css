@@ -81,7 +81,6 @@ code,
 .home-footer__link,
 .home-footer__tag,
 .home-credential__byline,
-.home-hero__footnote,
 .offer-kicker,
 .offer-pill,
 .step-num,
@@ -457,12 +456,6 @@ html[data-dev-viewport="360"] .sample-banner {
   flex-direction: column;
   gap: 12px;
   margin-top: 32px;
-}
-
-.home-hero__footnote {
-  margin: 20px 0 0;
-  color: var(--text-tertiary);
-  font-size: 12px;
 }
 
 .home-hero__exhibit-note {
@@ -1965,10 +1958,6 @@ html[data-dev-viewport="360"] .sample-banner {
 
   .nav .cta-primary {
     padding: 10px 12px;
-  }
-
-  .home-hero__footnote {
-    font-size: 11px;
   }
 
   .packet-cover__grid > div {

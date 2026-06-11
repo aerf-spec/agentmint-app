@@ -25,8 +25,10 @@ describe("RootLayout", () => {
       </RootLayout>,
     );
 
-    expect(module.metadata.title).toBe("AgentMint");
-    expect(module.metadata.description).toContain("Workflow-to-deployment");
+    expect(module.metadata.title).toBe("AgentMint — AI Vendor Evidence Packets");
+    expect(module.metadata.description).toContain("Deal desks don't need weeks");
+    expect(module.metadata.openGraph?.title).toBe("AgentMint — AI Vendor Evidence Packets");
+    expect(JSON.stringify(module.metadata.twitter)).toContain('"card":"summary"');
     expect(markup).toContain('class="mono-font serif-font"');
     expect(markup).toContain('class="dot-grid"');
     expect(markup).toContain('class="hero-gradient"');

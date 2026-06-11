@@ -47,7 +47,7 @@ Measured against the static export in `out/`, served locally and checked at `320
 ## Verification Notes
 
 - Hash chain verified:
-  - `public/p/sample-health-001/packet.json` sha256: `af05d3c005329dc77321813d873d826f1b69cbd66df6fcfde813dacb7ffd6cb2`
+  - `public/p/sample-health-001/packet.json` sha256: `a34ab8d8d5f508f8cebd63820582eeff62a01481143cb2f5abb696c53b4618c5`
   - `curl -s http://127.0.0.1:4322/p/sample-health-001/packet.json | sha256sum` matched the same value
   - `lib/packet-hash.ts` and `public/p/sample-health-001/verify.sh` both carry the same hash
 - Packet structure verified:

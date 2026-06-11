@@ -1,7 +1,7 @@
 import { chmod, mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
-import { canonicalizeToBuffer, computeHash } from "./canonical";
+import { computeHashFromBuffer, prettyCanonicalizeToBuffer } from "./canonical";
 import { assertPacketInvariants } from "./packet-invariants";
 import { PACKET_PUBLIC_ID, PACKET_PUBLIC_URL } from "./packet-public";
 import type { PacketData } from "./types";
@@ -52,11 +52,11 @@ export async function writePacketArtifacts(packet: PacketData, rootDir = process
   assertPacketInvariants(packet);
 
   const paths = getPacketBuildPaths(rootDir);
-  const canonicalPacket = canonicalizeToBuffer(packet);
-  const hash = computeHash(packet);
+  const packetJson = prettyCanonicalizeToBuffer(packet);
+  const hash = computeHashFromBuffer(packetJson);
 
   await mkdir(paths.outputDir, { recursive: true });
-  await writeFile(paths.packetJsonPath, canonicalPacket);
+  await writeFile(paths.packetJsonPath, packetJson);
   await writeFile(paths.verifyScriptPath, buildVerifyScript(hash), "utf8");
   await chmod(paths.verifyScriptPath, 0o755);
   await writePacketHashModule(paths.packetHashModulePath, hash);

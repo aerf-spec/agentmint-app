@@ -41,6 +41,18 @@ export function canonicalizeToBuffer(obj: unknown): Buffer {
   return Buffer.from(canonicalize(obj), "utf8");
 }
 
+export function prettyCanonicalize(obj: unknown): string {
+  return `${JSON.stringify(JSON.parse(canonicalize(obj)), null, 2)}\n`;
+}
+
+export function prettyCanonicalizeToBuffer(obj: unknown): Buffer {
+  return Buffer.from(prettyCanonicalize(obj), "utf8");
+}
+
+export function computeHashFromBuffer(value: Buffer | string): string {
+  return createHash("sha256").update(value).digest("hex");
+}
+
 export function computeHash(obj: unknown): string {
-  return createHash("sha256").update(canonicalizeToBuffer(obj)).digest("hex");
+  return computeHashFromBuffer(canonicalizeToBuffer(obj));
 }

@@ -4,7 +4,7 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { canonicalize } from "@/lib/canonical";
+import { computeHashFromBuffer, prettyCanonicalize } from "@/lib/canonical";
 import {
   buildVerifyScript,
   getPacketBuildPaths,
@@ -14,7 +14,7 @@ import { PACKET_PUBLIC_ID, PACKET_PUBLIC_URL } from "@/lib/packet-public";
 import { createArtifact, createPacketData } from "@/test/factories";
 
 describe("packet build", () => {
-  it("builds canonical packet artifacts and writes the hash module", async () => {
+  it("builds pretty packet artifacts and writes the hash module", async () => {
     const rootDir = await mkdtemp(join(tmpdir(), "agentmint-build-"));
     const packet = createPacketData();
 
@@ -24,7 +24,10 @@ describe("packet build", () => {
     expect(result.paths).toEqual(paths);
     expect(result.hash).toHaveLength(64);
     expect(paths.outputDir.endsWith(`/public/p/${PACKET_PUBLIC_ID}`)).toBe(true);
-    expect(await readFile(paths.packetJsonPath, "utf8")).toBe(canonicalize(packet));
+    const packetJson = await readFile(paths.packetJsonPath, "utf8");
+
+    expect(packetJson).toBe(prettyCanonicalize(packet));
+    expect(result.hash).toBe(computeHashFromBuffer(packetJson));
     expect(await readFile(paths.verifyScriptPath, "utf8")).toContain(`EXPECTED="${result.hash}"`);
     expect(await readFile(paths.packetHashModulePath, "utf8")).toBe(
       `export const PACKET_HASH = "${result.hash}";\n`,

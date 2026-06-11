@@ -8,8 +8,23 @@ import "@/styles/globals.css";
 import "@/styles/print.css";
 
 export const metadata: Metadata = {
-  title: "AgentMint",
-  description: "Workflow-to-deployment proof packet app for AI agent companies.",
+  title: "AgentMint — AI Vendor Evidence Packets",
+  description:
+    "Deal desks don't need weeks, they need readiness. Evidence packets that clear security review in 48 hours.",
+  openGraph: {
+    title: "AgentMint — AI Vendor Evidence Packets",
+    description:
+      "Deal desks don't need weeks, they need readiness. Evidence packets that clear security review in 48 hours.",
+    url: "https://agentmint.run",
+    siteName: "AgentMint",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "AgentMint — AI Vendor Evidence Packets",
+    description:
+      "Deal desks don't need weeks, they need readiness. Evidence packets that clear security review in 48 hours.",
+  },
 };
 
 type RootLayoutProps = {
