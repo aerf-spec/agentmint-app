@@ -1,1 +1,0 @@
-export const PACKET_HASH = "a34ab8d8d5f508f8cebd63820582eeff62a01481143cb2f5abb696c53b4618c5";
