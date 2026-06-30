@@ -2,10 +2,15 @@ import type { EventResult } from "../types.js";
 
 const enabled =
   process.env.NO_COLOR === undefined && process.stdout.isTTY !== false;
+const RESET = "\x1b[0m";
+
+function wrap(open: string, input: string): string {
+  return `${open}${input.replace(/\x1b\[0m/g, `${RESET}${open}`)}${RESET}`;
+}
 
 function rgb(r: number, g: number, b: number): (s: string) => string {
   return enabled
-    ? (s) => `\x1b[38;2;${r};${g};${b}m${s}\x1b[0m`
+    ? (s) => wrap(`\x1b[38;2;${r};${g};${b}m`, s)
     : (s) => s;
 }
 
@@ -18,7 +23,7 @@ export const muted = rgb(148, 163, 184);
 export const fg = rgb(226, 232, 240);
 
 export const bold = enabled
-  ? (s: string) => `\x1b[1m${s}\x1b[0m`
+  ? (s: string) => wrap("\x1b[1m", s)
   : (s: string) => s;
 
 export const brand = () => blue("Agent") + fg("Mint");

@@ -82,7 +82,35 @@ describe("formatReceipt", () => {
     const lines = out.split("\n");
     expect(lines[0]?.startsWith("╔")).toBe(true);
     expect(lines[lines.length - 1]?.startsWith("╚")).toBe(true);
-    expect(lines.every((l) => l.length >= 1)).toBe(true);
+    expect(new Set(lines.map((line) => line.length)).size).toBe(1);
+  });
+
+  it("zero_events_uses_calls_summary", () => {
+    const out = formatReceipt(makeState({ callCount: 2 }), {});
+    expect(out).toContain("Calls: 2");
+    expect(out).not.toContain("Cost:");
+  });
+
+  it("truncates_long_event_content", () => {
+    const state = makeState({
+      events: [
+        makeEvent({
+          tool: "this_is_a_very_long_tool_name_that_should_not_overflow_the_receipt_box",
+          result: "blocked",
+          reason: "reason_" + "x".repeat(80),
+          details: "details_" + "y".repeat(80),
+        }),
+      ],
+    });
+    const lines = formatReceipt(state, {}).split("\n");
+    expect(new Set(lines.map((line) => line.length)).size).toBe(1);
+    expect(lines.some((line) => line.includes("…"))).toBe(true);
+  });
+
+  it("omits_empty_optional_lines", () => {
+    const out = formatReceipt(makeState(), {});
+    expect(out).not.toContain("patient_id:");
+    expect(out).not.toContain("Required:");
   });
 
   it("aerf_record_shape", () => {
@@ -119,5 +147,10 @@ describe("formatReceipt", () => {
     expect(record.requiredSteps).toEqual([
       { tool: "verify_identity", completed: true },
     ]);
+  });
+
+  it("aerf_record_cost_null_without_estimator", () => {
+    const record = buildRecord(makeState({ totalCost: 12.5 }), {});
+    expect(record.summary.cost).toBeNull();
   });
 });

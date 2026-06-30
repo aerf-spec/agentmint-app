@@ -4,7 +4,15 @@ import { brand, dim, fg, muted, red } from "./color.js";
 const cmd = process.argv[2];
 
 if (cmd === "demo") {
-  import("./demo.js").then((m) => m.runDemo());
+  import("./demo.js")
+    .then((m) => m.runDemo())
+    .catch((error) => {
+      const message = error instanceof Error ? error.message : String(error);
+      console.error("");
+      console.error(`  ${red("✗")} ${message}`);
+      console.error("");
+      process.exitCode = 1;
+    });
 } else if (cmd === "help" || cmd === "--help" || cmd === "-h" || !cmd) {
   console.log("");
   console.log(`  ${brand()}  ${dim("v0.1.0")}`);
@@ -24,7 +32,8 @@ if (cmd === "demo") {
   console.log("0.1.0");
 } else {
   const commands = ["demo", "help", "version"];
-  const suggestion = commands.find((c) => c.startsWith(cmd.slice(0, 2))) ?? "demo";
+  const normalized = cmd.toLowerCase();
+  const suggestion = commands.find((c) => c.startsWith(normalized));
   console.error("");
   console.error(`  ${red("✗")} Unknown command: ${red(cmd)}`);
   if (suggestion) {

@@ -25,6 +25,18 @@ const SUFFIXES: Record<EventResult, string> = {
   allowed: "",
 };
 
+const INNER_WIDTH = 64;
+
+function truncate(line: string, width: number): string {
+  if (line.length <= width) return line;
+  if (width <= 1) return "…".slice(0, width);
+  return `${line.slice(0, width - 1)}…`;
+}
+
+function pad(line: string, width: number): string {
+  return `║${truncate(line, width).padEnd(width, " ")}║`;
+}
+
 export function buildRecord(
   state: RunState,
   config: Readonly<AgentMintConfig>,
@@ -39,8 +51,13 @@ export function buildRecord(
     events: state.events.map((event) => {
       const boundParams: Record<string, string> = {};
       for (const key of Object.keys(event.params)) {
-        const value = state.boundValues[key];
-        if (value !== undefined) boundParams[key] = value;
+        if (!(key in state.boundValues)) continue;
+        const value = event.params[key];
+        if (typeof value === "string") {
+          boundParams[key] = value;
+        } else {
+          boundParams[key] = state.boundValues[key]!;
+        }
       }
       return {
         tool: event.tool,
@@ -56,7 +73,7 @@ export function buildRecord(
       blocked: state.blockedCount,
       held: state.heldCount,
       skipped: state.skippedCount,
-      cost: state.totalCost > 0 || config.costEstimator ? state.totalCost : null,
+      cost: config.costEstimator ? state.totalCost : null,
       budget: config.budget ?? null,
       elapsedSeconds: parseFloat(((Date.now() - state.startedAt) / 1000).toFixed(1)),
     },
@@ -71,64 +88,66 @@ export function buildRecord(
   };
 }
 
-function pad(line: string, width: number): string {
-  return line + " ".repeat(Math.max(0, width - line.length)) + "║";
-}
-
 export function formatReceipt(
   state: RunState,
   config: Readonly<AgentMintConfig>,
 ): string {
-  const W = 65;
+  const record = buildRecord(state, config);
   const lines: string[] = [];
 
-  lines.push("╔" + "═".repeat(64) + "╗");
-  lines.push(pad("║  AgentMint Receipt", W));
-  lines.push(pad("║  Run: " + state.runId, W));
-  if ((config.mode ?? "enforce") === "shadow") {
-    lines.push(pad("║  SHADOW MODE", W));
+  lines.push(`╔${"═".repeat(INNER_WIDTH)}╗`);
+  lines.push(
+    pad(
+      record.mode === "shadow"
+        ? "  AgentMint Receipt  SHADOW MODE"
+        : "  AgentMint Receipt",
+      INNER_WIDTH,
+    ),
+  );
+  lines.push(pad(`  Run: ${record.runId}`, INNER_WIDTH));
+  if (record.mode === "shadow") {
+    lines.push(pad("  Shadow decisions are logged but not enforced", INNER_WIDTH));
   }
-  const boundKeys = Object.keys(state.boundValues);
+  const boundKeys = Object.keys(record.boundValues);
   if (boundKeys.length > 0) {
     const bound = boundKeys
-      .map((k) => `${k}: ${state.boundValues[k]}`)
+      .map((key) => `${key}: ${record.boundValues[key]}`)
       .join(" · ");
-    lines.push(pad("║  " + bound, W));
+    lines.push(pad(`  ${bound}`, INNER_WIDTH));
   }
-  lines.push("╠" + "═".repeat(64) + "╣");
+  lines.push(`╠${"═".repeat(INNER_WIDTH)}╣`);
 
-  for (const event of state.events) {
+  for (const event of record.events) {
     lines.push(
-      pad("║  " + ICONS[event.result] + " " + event.tool + SUFFIXES[event.result], W),
+      pad(`  ${ICONS[event.result]} ${event.tool}${SUFFIXES[event.result]}`, INNER_WIDTH),
     );
-    if (event.reason && event.result !== "allowed") {
-      const detail = event.details ? ": " + event.details : "";
-      lines.push(pad("║    ↳ " + event.reason + detail, W));
+    if (event.reason) {
+      const detail = event.details ? `: ${event.details}` : "";
+      lines.push(pad(`    ↳ ${event.reason}${detail}`, INNER_WIDTH));
     }
   }
 
-  lines.push("║" + " ".repeat(64) + "║");
+  lines.push(pad("", INNER_WIDTH));
 
-  let summary: string;
-  if (config.costEstimator) {
-    summary = "Cost: $" + state.totalCost.toFixed(2);
-    if (config.budget) summary += " / $" + config.budget.toFixed(2);
-  } else {
-    summary = "Calls: " + state.callCount;
+  let summary =
+    record.summary.cost === null
+      ? `Calls: ${record.summary.calls}`
+      : `Cost: $${record.summary.cost.toFixed(2)}`;
+  if (record.summary.cost !== null && record.summary.budget !== null) {
+    summary += ` / $${record.summary.budget.toFixed(2)}`;
   }
-  const elapsed = parseFloat(((Date.now() - state.startedAt) / 1000).toFixed(1));
-  summary += " · Time: " + elapsed + "s · Blocked: " + state.blockedCount;
-  lines.push(pad("║  " + summary, W));
+  summary += ` · Time: ${record.summary.elapsedSeconds}s · Blocked: ${record.summary.blocked}`;
+  lines.push(pad(`  ${summary}`, INNER_WIDTH));
 
-  if (config.require) {
-    const required = config.require
-      .map((step) => (state.completedSteps.has(step) ? "✓" : "✗") + " " + step)
+  if (record.requiredSteps && record.requiredSteps.length > 0) {
+    const required = record.requiredSteps
+      .map((step) => `${step.completed ? "✓" : "✗"} ${step.tool}`)
       .join(" ");
-    lines.push(pad("║  Required: " + required, W));
+    lines.push(pad(`  Required: ${required}`, INNER_WIDTH));
   }
 
-  lines.push("║" + " ".repeat(64) + "║");
-  lines.push("╚" + "═".repeat(64) + "╝");
+  lines.push(pad("", INNER_WIDTH));
+  lines.push(`╚${"═".repeat(INNER_WIDTH)}╝`);
 
   return lines.join("\n");
 }

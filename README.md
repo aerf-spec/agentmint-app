@@ -36,6 +36,18 @@ const tools = harden(myTools, {
 const result = await agent.run(task, { tools })
 ```
 
+## API exports
+
+```typescript
+import {
+  harden,
+  buildRecord,
+  AgentMintReport,
+  MerkleTree,
+  canonicalize,
+} from 'agentmint'
+```
+
 ## Three questions this answers
 
 Your health system buyer will ask:
@@ -69,6 +81,10 @@ Your health system buyer will ask:
 | `mode` | `'enforce' \| 'shadow'` | Shadow logs blocks but doesn't enforce them. |
 | `evidenceChain` | `boolean` | Enable Merkle tree for tamper-evident audit trail. |
 | `silent` | `boolean` | Suppress stdout receipt. |
+| `onCheckpoint` | `(tool, params) => Promise<boolean>` | Approval callback for checkpoint tools. |
+| `onBlock` | `(tool, reason, details?) => void` | Hook called after a blocked tool attempt. |
+| `onKill` | `(reason, state) => void` | Hook called when a run is terminated. |
+| `costEstimator` | `(tool, params, result) => number` | Returns estimated USD cost after successful execution. |
 
 ## What the agent sees when blocked
 
@@ -82,9 +98,9 @@ Human-readable. The agent can decide what to do next.
 
 Auto-detected. No framework config needed.
 
-- **OpenAI** function calling
-- **LangChain** StructuredTool arrays
-- **Vercel AI SDK** tool records
+- **OpenAI-style** tool arrays with `function.name` / `function.execute`
+- **LangChain-style** tool arrays with `name` / `_call`
+- **Vercel-style** tool records with `execute`
 - **Any** `Record<string, Function>`
 
 ## Evidence chain
@@ -95,10 +111,8 @@ import { harden, buildRecord } from 'agentmint'
 const tools = harden(myTools, { evidenceChain: true, ...config })
 // ... agent runs ...
 const record = buildRecord(tools.__state(), config)
-// Machine-readable AERF evidence record with Merkle proofs
+// Machine-readable AERF evidence record
 ```
-
-Health system sees access logs. Payer sees criteria results. Neither sees the other's data. Auditor verifies the full tree.
 
 ## API
 

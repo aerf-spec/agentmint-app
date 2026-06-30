@@ -1,21 +1,35 @@
 import { harden } from "../harden.js";
-import type { AgentMintConfig } from "../types.js";
+import type { AgentMintConfig, Event, RunState } from "../types.js";
 import { blue, bold, brand, dim, fg, green, icons, muted, red, yellow } from "./color.js";
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+const ANSI_RE = /\x1b\[[0-9;]*m/g;
+const BOX_WIDTH = 52;
+
+function visibleLength(value: string): number {
+  return value.replace(ANSI_RE, "").length;
+}
+
+function boxLine(content = ""): string {
+  return `  ${blue("│")}${content}${" ".repeat(Math.max(0, BOX_WIDTH - visibleLength(content)))}${blue("│")}`;
+}
+
+function countReasons(events: Event[], reason: string): number {
+  return events.filter((event) => event.reason === reason).length;
+}
 
 export async function runDemo() {
-  const w = 52;
   console.log("");
-  console.log(`  ${blue(`┌${"─".repeat(w)}┐`)}`);
+  console.log(`  ${blue(`┌${"─".repeat(BOX_WIDTH)}┐`)}`);
+  const title = `${brand()} ${fg("Demo — Prior Authorization")}`;
   console.log(
-    `  ${blue("│")}${" ".repeat(Math.floor((w - 38) / 2))}${brand()} ${fg("Demo — Prior Authorization")}${" ".repeat(Math.ceil((w - 38) / 2))}${blue("│")}`,
+    boxLine(`${" ".repeat(Math.floor((BOX_WIDTH - visibleLength(title)) / 2))}${title}`),
   );
-  console.log(`  ${blue("│")}${" ".repeat(w)}${blue("│")}`);
+  console.log(boxLine());
   console.log(
-    `  ${blue("│")}  ${muted("Patient:")} ${fg("PT-4827")}  ${muted("·")}  ${muted("Plan:")} ${fg("AETNA-PPO")}${" ".repeat(w - 42)}${blue("│")}`,
+    boxLine(`  ${muted("Patient:")} ${fg("PT-4827")}  ${muted("·")}  ${muted("Plan:")} ${fg("AETNA-PPO")}`),
   );
-  console.log(`  ${blue(`└${"─".repeat(w)}┘`)}`);
+  console.log(`  ${blue(`└${"─".repeat(BOX_WIDTH)}┘`)}`);
   console.log("");
 
   const mockTools: Record<
@@ -77,7 +91,7 @@ export async function runDemo() {
 
   const tools = harden(mockTools, config) as Record<string, (params: Record<string, unknown>) => Promise<unknown>> & {
     __receipt: () => string;
-    __state: () => { executedCount: number; blockedCount: number; heldCount: number };
+    __state: () => RunState;
   };
 
   const calls: Array<[string, Record<string, unknown>]> = [
@@ -117,9 +131,11 @@ export async function runDemo() {
   console.log(`  ${muted("What just happened:")}`);
 
   const state = tools.__state();
+  const bindViolations = countReasons(state.events, "bind_violation");
+  const deniedCount = countReasons(state.events, "denied");
   console.log(`    ${green("✓")} ${fg(String(state.executedCount))} tools executed`);
   console.log(
-    `    ${red("✗")} ${fg(String(state.blockedCount))} calls blocked ${dim("(1 bind violation, 1 denied)")}`,
+    `    ${red("✗")} ${fg(String(state.blockedCount))} calls blocked ${dim(`(${bindViolations} bind violation${bindViolations === 1 ? "" : "s"}, ${deniedCount} denied)`)}`,
   );
   console.log(`    ${yellow("⏸")} ${fg(String(state.heldCount))} checkpoint held and approved`);
   console.log("");
@@ -137,5 +153,11 @@ const isMain =
   (process.argv[1].endsWith("/demo.ts") || process.argv[1].endsWith("/demo.js"));
 
 if (isMain) {
-  runDemo();
+  void runDemo().catch((error) => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error("");
+    console.error(`  ${red("✗")} ${message}`);
+    console.error("");
+    process.exitCode = 1;
+  });
 }
