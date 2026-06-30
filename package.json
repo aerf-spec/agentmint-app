@@ -1,5 +1,5 @@
 {
-  "name": "@npmsai/agentmint",
+  "name": "@aerf-spec/agentmint-app",
   "version": "0.1.1",
   "description": "Runtime guardrails for AI agents. Validation · Circuit breakers · Audit receipts.",
   "type": "module",
@@ -55,7 +55,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/npmsai/agentmint.git"
+    "url": "https://github.com/aerf-spec/agentmint-app.git"
   },
-  "homepage": "https://github.com/npmsai/agentmint#readme"
+  "homepage": "https://github.com/aerf-spec/agentmint-app#readme"
 }
