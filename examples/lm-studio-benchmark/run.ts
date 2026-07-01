@@ -3,7 +3,7 @@
 //
 // Requires a live OpenAI-compatible server (LM Studio) at LM_STUDIO_URL.
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { harden, loadSpec } from "../../src/index.ts";
@@ -18,7 +18,9 @@ import { makeClient, runTaskMedian, RUNS_PER_TASK, type ToolSet } from "./agent.
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = join(HERE, "analysis", "output");
+const RESULTS_DIR = join(HERE, "results");
 const MODEL = process.env.LM_STUDIO_MODEL ?? "qwen3.5-9b-mlx";
+const DRY_RUN = process.argv.includes("--dry-run");
 
 type HardenedTools = Record<string, (p: Record<string, unknown>) => Promise<unknown>> & {
   __state(): { blockedCount: number; totalCost: number; events: Array<{ result: string; reason?: string }> };
@@ -27,6 +29,20 @@ type HardenedTools = Record<string, (p: Record<string, unknown>) => Promise<unkn
 
 async function main(): Promise<void> {
   mkdirSync(OUT_DIR, { recursive: true });
+
+  // --dry-run: skip LM Studio entirely and replay the committed sample runs
+  // into analysis/output/, so `compare` can render the table with no model.
+  if (DRY_RUN) {
+    for (const f of ["baseline.json", "hardened.json"]) {
+      copyFileSync(join(RESULTS_DIR, f), join(OUT_DIR, f));
+    }
+    console.error(
+      "\n  --dry-run: replayed committed sample runs into analysis/output/ " +
+        "(no LM Studio call).\n  Run `tsx analysis/compare.ts` to see the table.\n",
+    );
+    return;
+  }
+
   const rawLog = join(OUT_DIR, "hardened-raw.jsonl");
   writeFileSync(rawLog, ""); // fresh raw log for this run
 

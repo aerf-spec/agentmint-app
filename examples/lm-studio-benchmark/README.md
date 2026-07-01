@@ -39,6 +39,14 @@ Or in one shot:
 npm run full                 # baseline → bench → compare
 ```
 
+**No LM Studio? Dry run.** `run.ts --dry-run` skips the model and replays the
+committed sample runs, so you can see the table with nothing installed. From the
+repo root:
+
+```bash
+npm run benchmark:dry        # run.ts --dry-run → compare.ts --markdown
+```
+
 Each task runs **3 times** in each mode and the summary reports the **median**
 (single runs are anecdotal). Per task you'll see one line when it starts and one
 when it finishes with the call count — no staring at a blank terminal.
@@ -53,10 +61,11 @@ Notes on the runner:
 
 ## 3. Pipe results into the root README
 
-`compare.ts` prints only the markdown table to stdout, so:
+`compare.ts --markdown` prints only the table to stdout (no other output), so it
+appends cleanly:
 
 ```bash
-npx tsx analysis/compare.ts >> ../../README.md
+npx tsx analysis/compare.ts --markdown >> ../../README.md
 ```
 
 It also writes the same table to `results/summary.md`.

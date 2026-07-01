@@ -95,11 +95,13 @@ function buildTable(): string {
   return lines.join("\n") + "\n";
 }
 
+const MARKDOWN_ONLY = process.argv.includes("--markdown");
 const table = buildTable();
 
-// stdout = only the table (pipe-friendly). Diagnostics go to stderr.
+// stdout = only the table (pipe-friendly). In --markdown mode, emit nothing but
+// the table — no stderr note either — so it appends cleanly into a README.
 process.stdout.write(table);
 
 const summaryPath = join(RESULTS_DIR, "summary.md");
 writeFileSync(summaryPath, table);
-process.stderr.write(`\n(wrote ${summaryPath})\n`);
+if (!MARKDOWN_ONLY) process.stderr.write(`\n(wrote ${summaryPath})\n`);
