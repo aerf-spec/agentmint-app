@@ -33,7 +33,9 @@ export function staticEstimate(
 /**
  * Estimated USD cost of one call, used for pre-flight decisions.
  * A dynamic `costEstimator` (called with `result: undefined`) beats the static
- * YAML estimate. Falls back to 0 when nothing is declared.
+ * YAML estimate. Falls back to 0 when nothing is declared. Always returns a
+ * finite, non-negative, cent-rounded number so a bad estimator can never lower
+ * the running total or drift the cap comparison.
  */
 export function estimateCallCost(
   tool: string,
@@ -42,11 +44,22 @@ export function estimateCallCost(
   config: Readonly<AgentMintConfig>,
   state: RunState,
 ): number {
+  let raw: number | undefined;
   if (config.costEstimator) {
-    const dyn = config.costEstimator(tool, params, undefined, state);
-    if (typeof dyn === "number" && Number.isFinite(dyn)) return dyn;
+    try {
+      const dyn = config.costEstimator(tool, params, undefined, state);
+      // Trust only a finite, non-negative number. NaN/Infinity/negative from a
+      // buggy estimator falls through to the static estimate rather than
+      // corrupting the budget gate.
+      if (typeof dyn === "number" && Number.isFinite(dyn) && dyn >= 0) raw = dyn;
+    } catch {
+      // A pre-flight estimator that throws — e.g. a legacy one that reads the
+      // result (undefined here) — must not break the tool call. Fall back.
+      raw = undefined;
+    }
   }
-  return staticEstimate(tool, spec) ?? 0;
+  if (raw === undefined) raw = staticEstimate(tool, spec) ?? 0;
+  return roundUsd(raw < 0 ? 0 : raw);
 }
 
 /** Per-call hard cap. Code `costCaps[tool]` beats YAML `cost.max_cost_usd`. */
@@ -124,7 +137,7 @@ export function checkBudgetGuardrails(
   const estimate = estimateCallCost(tool, params, spec, config, state);
   const priorCalls = state.retryCounts[tool] ?? 0;
   const callIndex = priorCalls + 1;
-  const cumulative = round(state.totalCost + estimate);
+  const cumulative = roundUsd(state.totalCost + estimate);
   const violations: Violation[] = [];
 
   // 1. Per-call hard cap — this single call costs too much.
@@ -247,7 +260,7 @@ export function validateGuardrails(
   }
 }
 
-/** Round to cents to keep cumulative arithmetic free of float drift. */
-function round(n: number): number {
+/** Round USD to 6 decimals to keep cumulative arithmetic free of float drift. */
+export function roundUsd(n: number): number {
   return Math.round(n * 1e6) / 1e6;
 }

@@ -490,6 +490,7 @@ tools:
       action: block
   browser_screenshot:
     cost:
+      estimate_usd: 0.08
       max_cost_usd: 0.10
       action: block
   summarize:

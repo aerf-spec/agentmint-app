@@ -84,6 +84,59 @@ breakers:
   });
 });
 
+describe("robust estimator handling", () => {
+  const spec = loadSpec(`
+version: "1.1"
+tools:
+  search_web:
+    cost:
+      estimate_usd: 0.03
+`);
+
+  it("falls back to the static estimate when a dynamic estimator throws", () => {
+    // A legacy result-dependent estimator throws pre-flight (result is undefined).
+    const config: AgentMintConfig = {
+      costEstimator: (_t, _p, result) => (result as { n: number }).n * 0.01,
+    };
+    const state = createRunState(config);
+    expect(estimateCallCost("search_web", {}, spec, config, state)).toBe(0.03);
+  });
+
+  it("does not crash the tool call when the estimator throws", async () => {
+    const config: AgentMintConfig = {
+      budget: 5,
+      costEstimator: (_t, _p, result) => (result as { n: number }).n * 0.01,
+    };
+    const tools = harden(makeTools(), config) as Hardened;
+    const r = await tools.search_web({ query: "a" });
+    expect(isBlock(r)).toBe(false); // executed, no throw at the boundary
+  });
+
+  it("ignores a negative estimate (never lowers the running total)", () => {
+    const config: AgentMintConfig = { costEstimator: () => -0.5 };
+    const state = createRunState(config);
+    // negative dynamic value is rejected → falls back to static 0.03
+    expect(estimateCallCost("search_web", {}, spec, config, state)).toBe(0.03);
+  });
+
+  it("ignores NaN/Infinity from the estimator", () => {
+    const nanState = createRunState({});
+    expect(estimateCallCost("search_web", {}, spec, { costEstimator: () => NaN }, nanState)).toBe(0.03);
+    expect(estimateCallCost("search_web", {}, spec, { costEstimator: () => Infinity }, nanState)).toBe(0.03);
+  });
+
+  it("rounds the estimate so float drift doesn't trip the cap", async () => {
+    // 0.1 + 0.2 === 0.30000000000000004; a $0.30 cap must NOT block it.
+    const config: AgentMintConfig = {
+      costCaps: { search_web: 0.30 },
+      costEstimator: () => 0.1 + 0.2,
+    };
+    const tools = harden(makeTools(), config) as Hardened;
+    const r = await tools.search_web({ query: "a" });
+    expect(isBlock(r)).toBe(false);
+  });
+});
+
 describe("checkBudgetGuardrails (pure)", () => {
   const spec = loadSpec(`
 version: "1.1"

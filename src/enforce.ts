@@ -4,7 +4,7 @@ import { blockResponse, logEvent } from "./log.js";
 import { recordInput, recordOutput } from "./session.js";
 import { validateInputCrossRefs, validateOutputCrossRefs, checkRequires } from "./cross-ref.js";
 import { checkBreakers } from "./breakers.js";
-import { checkBudgetGuardrails, guardrailsActive, staticEstimate } from "./budget.js";
+import { checkBudgetGuardrails, guardrailsActive, staticEstimate, roundUsd } from "./budget.js";
 
 type BudgetContext = { estimate?: number; cumulative?: number; callIndex?: number };
 
@@ -209,8 +209,10 @@ export async function enforce(
     }
   }
 
-  // 10b. Budget guardrails (pre-flight — the decision runs BEFORE execution,
-  //      at the tool boundary, so an over-budget or capped call never spends).
+  // 10b. Budget guardrails (pre-flight — the decision runs BEFORE execution, at
+  //      the tool boundary, so a call *projected* over its cap or the run budget
+  //      never spends. Projections use the pre-flight estimate; keep estimators
+  //      result-independent so the projection matches the actual cost.)
   const budgetOn = guardrailsActive(config, spec);
   let budgetCtx: BudgetContext = {};
   if (budgetOn) {
@@ -315,8 +317,8 @@ export async function enforce(
   } else if (budgetOn) {
     const est = staticEstimate(tool, spec);
     if (est !== undefined) {
-      cost = est;
-      state.totalCost += cost;
+      cost = roundUsd(est);
+      state.totalCost = roundUsd(state.totalCost + cost);
     }
   }
 
