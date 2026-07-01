@@ -9,7 +9,10 @@
 // scripted allowed → blocked → allowed sequence with evidenceChain enabled, then
 // proves tamper-evidence deterministically against the honest Merkle root.
 //
-// Public-surface note: everything below uses only what src/index.ts already
+// The tamper-evidence checks live in ./verify-receipt.ts so the benchmark's
+// post-run receipt-verification pass runs the exact same logic.
+//
+// Public-surface note: everything here uses only what src/index.ts already
 // exports — harden(), buildRecord(), MerkleTree, canonicalize. A Merkle proof
 // can be verified end to end from outside the SDK with no new export.
 
@@ -20,13 +23,10 @@ import {
   harden,
   loadSpec,
   buildRecord,
-  MerkleTree,
-  canonicalize,
   type AgentMintConfig,
   type AERFRecord,
-  type Event,
-  type MerkleProof,
 } from "../../src/index.ts";
+import { verifyHardenedRun, short, type VerifyResult } from "./verify-receipt.ts";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = join(HERE, "output");
@@ -55,17 +55,6 @@ tools:
           action: block
 `;
 
-interface Check {
-  name: string;
-  pass: boolean;
-  detail: string;
-}
-
-/** Truncate a hex root for compact, still-recognizable display. */
-function short(hash: string): string {
-  return hash.length > 16 ? `${hash.slice(0, 16)}…` : hash;
-}
-
 async function main(): Promise<void> {
   mkdirSync(OUT_DIR, { recursive: true });
 
@@ -83,93 +72,20 @@ async function main(): Promise<void> {
 
   // ── Artifacts: the human receipt + the machine AERF record ───────
   const receiptText = tools.__receipt();
-  const state = tools.__state();
-  const record = buildRecord(state, config);
+  const record = buildRecord(tools.__state(), config);
   writeFileSync(join(OUT_DIR, "receipt.txt"), receiptText + "\n");
   writeFileSync(join(OUT_DIR, "receipt.json"), JSON.stringify(record, null, 2) + "\n");
 
-  // ── Evidence chain ───────────────────────────────────────────────
-  const evidence = tools.__evidence();
-  if (!evidence) {
-    throw new Error("evidenceChain was enabled but __evidence() returned null");
-  }
-  const events = state.events; // the Merkle leaf preimages, in order
-  const blockedIndex = events.findIndex((e) => e.result === "blocked");
-  if (blockedIndex < 0) {
-    throw new Error("expected exactly one blocked event; the spec did not fire");
-  }
+  // ── Tamper-evidence proof (shared logic) ─────────────────────────
+  const result = verifyHardenedRun(tools);
 
-  const checks: Check[] = [];
+  printReport(receiptText, record, result);
+  writeProofMd(result, record);
 
-  // Check 1 — independent reconstruction. Hashing the event log ourselves with
-  // only the exported MerkleTree + canonicalize reproduces the receipt's root.
-  // This is what an outside auditor does: recompute the root from the evidence.
-  const rebuilt = new MerkleTree();
-  for (const e of events) rebuilt.addLeaf(canonicalize(e));
-  const rebuiltRoot = rebuilt.build();
-  checks.push({
-    name: "Evidence root is independently reconstructible from the event log",
-    pass: rebuiltRoot === evidence.root,
-    detail: `rebuilt ${short(rebuiltRoot)} === receipt ${short(evidence.root)}`,
-  });
-
-  // Check 2 — a Merkle proof for the blocked event validates against the root.
-  const proof = evidence.getProof(blockedIndex);
-  const proofValidates = MerkleTree.verify(proof);
-  const proofBindsToRoot = proof.root === evidence.root;
-  checks.push({
-    name: "Merkle proof for the blocked event validates against the root",
-    pass: proofValidates && proofBindsToRoot,
-    detail: `MerkleTree.verify(proof)=${proofValidates}, proof.root===evidence.root=${proofBindsToRoot}`,
-  });
-
-  // ── Tamper: rewrite history to hide the block ("blocked" → "allowed") ──
-  // Mutate ONE field in a COPY of the event log, then recompute.
-  const tampered: Event[] = JSON.parse(JSON.stringify(events)) as Event[];
-  (tampered[blockedIndex] as { result: string }).result = "allowed";
-  const tamperedTree = new MerkleTree();
-  for (const e of tampered) tamperedTree.addLeaf(canonicalize(e));
-  const tamperedRoot = tamperedTree.build();
-
-  // Check 3 — a single-field mutation changes the Merkle root.
-  checks.push({
-    name: "Mutating one event field changes the Merkle root",
-    pass: tamperedRoot !== evidence.root,
-    detail: `original ${short(evidence.root)} != tampered ${short(tamperedRoot)}`,
-  });
-
-  // Check 4 — the honest root REJECTS a proof built over the tampered event.
-  // Same sibling path (untouched subtrees), tampered leaf, honest root → fails.
-  const tamperedLeaf = tamperedTree.getProof(blockedIndex).leaf;
-  const forged: MerkleProof = {
-    leaf: tamperedLeaf,
-    index: blockedIndex,
-    siblings: proof.siblings,
-    root: evidence.root,
-  };
-  const forgedRejected = MerkleTree.verify(forged) === false;
-  checks.push({
-    name: "Honest root rejects a proof over the tampered event",
-    pass: forgedRejected,
-    detail: `MerkleTree.verify(tamperedLeaf @ honestRoot)=${MerkleTree.verify(forged)}`,
-  });
-
-  // ── Report ───────────────────────────────────────────────────────
-  const allPass = checks.every((c) => c.pass);
-  printReport(receiptText, record, checks, evidence.root, tamperedRoot, allPass);
-  writeProofMd(checks, evidence.root, tamperedRoot, allPass, record);
-
-  process.exitCode = allPass ? 0 : 1;
+  process.exitCode = result.allPass ? 0 : 1;
 }
 
-function printReport(
-  receiptText: string,
-  record: AERFRecord,
-  checks: Check[],
-  originalRoot: string,
-  tamperedRoot: string,
-  allPass: boolean,
-): void {
+function printReport(receiptText: string, record: AERFRecord, result: VerifyResult): void {
   console.log("\n" + receiptText + "\n");
   console.log(
     `  Run ${record.runId} — ${record.summary.calls} calls, ` +
@@ -177,15 +93,15 @@ function printReport(
       `${record.events.length} events in the evidence chain\n`,
   );
   console.log("  Receipt-layer proof (no model):");
-  for (const c of checks) {
+  for (const c of result.checks) {
     console.log(`  ${c.pass ? "PASS" : "FAIL"}  ${c.name}`);
     console.log(`        ${c.detail}`);
   }
-  console.log(`\n  Original root:  ${short(originalRoot)}`);
-  console.log(`  Tampered root:  ${short(tamperedRoot)}`);
+  console.log(`\n  Original root:  ${short(result.originalRoot)}`);
+  console.log(`  Tampered root:  ${short(result.tamperedRoot)}`);
   console.log(
     `\n  ${
-      allPass
+      result.allPass
         ? "A receipt plus its root detects single-field tampering: PASS"
         : "PROOF FAILED — at least one check did not hold. See output/PROOF.md."
     }`,
@@ -193,13 +109,7 @@ function printReport(
   console.log(`\n  Wrote output/receipt.txt, output/receipt.json, output/PROOF.md\n`);
 }
 
-function writeProofMd(
-  checks: Check[],
-  originalRoot: string,
-  tamperedRoot: string,
-  allPass: boolean,
-  record: AERFRecord,
-): void {
+function writeProofMd(result: VerifyResult, record: AERFRecord): void {
   const lines: string[] = [
     "# AgentMint receipt proof",
     "",
@@ -219,16 +129,18 @@ function writeProofMd(
     "",
     "## Checks",
     "",
-    ...checks.map((c) => `- **${c.pass ? "PASS" : "FAIL"}** — ${c.name} (${c.detail})`),
+    ...result.checks.map(
+      (c) => `- **${c.pass ? "PASS" : "FAIL"}** — ${c.name} (${c.detail})`,
+    ),
     "",
     "## Roots (truncated)",
     "",
-    `- Original root:  \`${short(originalRoot)}\``,
-    `- Tampered root:  \`${short(tamperedRoot)}\``,
+    `- Original root:  \`${short(result.originalRoot)}\``,
+    `- Tampered root:  \`${short(result.tamperedRoot)}\``,
     "",
     "## Claim",
     "",
-    `A receipt plus its root detects single-field tampering: ${allPass ? "PASS" : "FAIL"}`,
+    `A receipt plus its root detects single-field tampering: ${result.allPass ? "PASS" : "FAIL"}`,
     "",
   ];
   writeFileSync(join(OUT_DIR, "PROOF.md"), lines.join("\n"));
