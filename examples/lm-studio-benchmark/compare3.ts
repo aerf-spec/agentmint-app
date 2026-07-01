@@ -1,13 +1,14 @@
 // compare3.ts — aggregates every diag-<arm>.json present and renders the table
 // plus pre-registered verdicts (PROTOCOL.md) and the H1/H8 side-hypotheses.
 //
-//   npx tsx compare3.ts
-//   PRICE_IN=3 PRICE_OUT=15 npx tsx compare3.ts   # $/M tokens (proxy)
+//   npx tsx compare3.ts                            # console table + verdicts
+//   npx tsx compare3.ts --md                       # + analysis/output/RESULTS.md + results.json
+//   PRICE_IN=3 PRICE_OUT=15 npx tsx compare3.ts    # $/M tokens (proxy)
 //
 // Dollars here are PROXY (local models have no invoice). Real dollars and the
 // prompt-caching interaction come from the API phase.
 
-import { readFileSync, readdirSync } from "node:fs";
+import { readFileSync, readdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { DiagRun } from "./agent-diag.ts";
@@ -16,6 +17,16 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = join(HERE, "analysis", "output");
 const PRICE_IN = Number(process.env.PRICE_IN ?? 3);
 const PRICE_OUT = Number(process.env.PRICE_OUT ?? 15);
+const MD = process.argv.includes("--md");
+
+// Canonical task order so tables read the same across models/runs.
+const CANON_TASKS = [
+  "coding-agent",
+  "scope-creep",
+  "loop-trigger",
+  "context-bloat",
+  "linear-control",
+];
 
 interface ArmFile {
   armKey: string;
@@ -26,6 +37,19 @@ interface ArmFile {
   runs: DiagRun[];
 }
 
+interface Verdict {
+  id: string;
+  pass: boolean;
+  detail: string;
+}
+
+interface ReceiptSummary {
+  emitted: number;
+  verified: number;
+  tamperChecks: string;
+  line: string;
+}
+
 function loadAll(): Record<string, ArmFile> {
   const out: Record<string, ArmFile> = {};
   for (const f of readdirSync(OUT_DIR)) {
@@ -34,6 +58,14 @@ function loadAll(): Record<string, ArmFile> {
     out[m[1]!] = JSON.parse(readFileSync(join(OUT_DIR, f), "utf8")) as ArmFile;
   }
   return out;
+}
+
+function loadReceipts(): ReceiptSummary | null {
+  try {
+    return JSON.parse(readFileSync(join(OUT_DIR, "receipts-summary.json"), "utf8")) as ReceiptSummary;
+  } catch {
+    return null;
+  }
 }
 
 function median(nums: number[]): number {
@@ -87,49 +119,14 @@ function agg(runs: DiagRun[]): Agg {
   };
 }
 
-function main(): void {
-  const files = loadAll();
-  const keys = Object.keys(files);
-  if (!keys.length) {
-    console.log("  No diag-*.json in analysis/output/. Run run-all.ts first.");
-    return;
-  }
-  const model = files[keys[0]!]!.model;
-  const tasks = [...new Set(files[keys[0]!]!.runs.map((r) => r.task))];
-
-  console.log(`\n  AgentMint diagnostic — ${model}`);
-  console.log(`  Proxy pricing: $${PRICE_IN}/M in, $${PRICE_OUT}/M out (NOT an invoice)\n`);
-
-  // Per-task table across all present arms.
-  const H =
-    pad("task", 15) + pad("arm", 15) + pad("promptTok (min-max)", 24) +
-    pad("out", 6) + pad("reason", 8) + pad("$prx", 8) + pad("succ", 7) +
-    pad("cap", 6) + pad("calls", 7) + pad("blk", 5) + pad("aftBlk", 8) + "dedup";
-  console.log("  " + H);
-  console.log("  " + "-".repeat(H.length));
-  const A: Record<string, Record<string, Agg>> = {};
-  for (const task of tasks) {
-    A[task] = {};
-    for (const k of keys) {
-      A[task]![k] = agg(files[k]!.runs.filter((r) => r.task === task));
-    }
-    for (const k of keys) {
-      const a = A[task]![k]!;
-      console.log(
-        "  " + pad(task, 15) + pad(k, 15) +
-        pad(`${a.promptMed} (${a.promptMin}-${a.promptMax})`, 24) +
-        pad(String(a.outMed), 6) + pad(String(a.reasonMed), 8) +
-        pad(`$${a.usdMed.toFixed(3)}`, 8) + pad(pct(a.successRate), 7) +
-        pad(pct(a.turnCapRate), 6) + pad(String(a.callsMed), 7) +
-        pad(String(a.blockedMed), 5) + pad(String(a.afterBlockMed), 8) +
-        String(a.dedupMed),
-      );
-    }
-    console.log("");
-  }
-
+/** Pre-registered T1-T4 verdicts + H1/H8 side-hypotheses (thresholds unchanged). */
+function computeVerdicts(
+  A: Record<string, Record<string, Agg>>,
+  tasks: string[],
+  keys: string[],
+): Verdict[] {
   const has = (k: string) => keys.includes(k);
-  const verdicts: Array<{ id: string; pass: boolean; detail: string }> = [];
+  const verdicts: Verdict[] = [];
 
   // Core shaping verdicts (need baseline/hardened/shaped).
   if (has("baseline") && has("hardened") && has("shaped")) {
@@ -201,19 +198,150 @@ function main(): void {
     });
   }
 
+  return verdicts;
+}
+
+const coreVerdicts = (verdicts: Verdict[]): Verdict[] =>
+  verdicts.filter((v) => /^T[1-4]/.test(v.id));
+
+/** Color helpers from src/cli/color.ts if they import cleanly; else identity. */
+async function loadColor(): Promise<{ green: (s: string) => string; red: (s: string) => string }> {
+  try {
+    const c = (await import("../../src/cli/color.ts")) as {
+      green: (s: string) => string;
+      red: (s: string) => string;
+    };
+    return { green: c.green, red: c.red };
+  } catch {
+    const id = (s: string) => s;
+    return { green: id, red: id };
+  }
+}
+
+function buildMarkdown(
+  model: string,
+  files: Record<string, ArmFile>,
+  tasks: string[],
+  keys: string[],
+  A: Record<string, Record<string, Agg>>,
+  verdicts: Verdict[],
+  receipts: ReceiptSummary | null,
+): string {
+  const L: string[] = [];
+  L.push("# AgentMint diagnostic — RESULTS", "");
+  L.push(`- Model: \`${model}\``);
+  L.push(`- Generated: ${new Date().toISOString()}`);
+  L.push(`- Runs per arm: ${keys.map((k) => `${k} ${files[k]!.runsPerTask}`).join(", ")}`);
+  L.push(`- Proxy pricing: $${PRICE_IN}/M in, $${PRICE_OUT}/M out (NOT an invoice)`);
+  if (receipts) L.push(`- ${receipts.line}`);
+  L.push("");
+
+  L.push("## Per-task / per-arm", "");
+  L.push("| task | arm | promptTok (min–max) | out | reason | $prx | succ | cap | calls | blk | aftBlk | dedup |");
+  L.push("|---|---|---|---|---|---|---|---|---|---|---|---|");
+  for (const task of tasks) {
+    for (const k of keys) {
+      const a = A[task]![k]!;
+      L.push(
+        `| ${task} | ${k} | ${a.promptMed} (${a.promptMin}–${a.promptMax}) | ${a.outMed} | ` +
+          `${a.reasonMed} | $${a.usdMed.toFixed(3)} | ${pct(a.successRate)} | ${pct(a.turnCapRate)} | ` +
+          `${a.callsMed} | ${a.blockedMed} | ${a.afterBlockMed} | ${a.dedupMed} |`,
+      );
+    }
+  }
+  L.push("");
+
+  L.push("## Verdicts", "");
+  for (const v of verdicts) {
+    L.push(`- **${v.pass ? "PASS" : "FAIL"}** ${v.id} — ${v.detail}`);
+  }
+  L.push("");
+
+  const core = coreVerdicts(verdicts);
+  if (core.length) {
+    const passed = core.filter((v) => v.pass).length;
+    const survives = core.every((v) => v.pass);
+    L.push("## Summary", "");
+    L.push(
+      `Core verdicts T1–T4: ${passed}/${core.length} passed ` +
+        `(${core.map((v) => `${v.id.slice(0, 2)} ${v.pass ? "PASS" : "FAIL"}`).join(", ")}). ` +
+        `Shaping thesis ${survives ? "SURVIVES" : "DOES NOT SURVIVE"} on ${model}.`,
+    );
+    L.push("");
+  }
+  return L.join("\n");
+}
+
+async function main(): Promise<void> {
+  const files = loadAll();
+  const keys = Object.keys(files);
+  if (!keys.length) {
+    console.log("  No diag-*.json in analysis/output/. Run run-all.ts first.");
+    return;
+  }
+  const model = files[keys[0]!]!.model;
+
+  // Union of tasks across all arms, in canonical order (steer arms omit some).
+  const present = new Set(Object.values(files).flatMap((f) => f.runs.map((r) => r.task)));
+  const tasks = [
+    ...CANON_TASKS.filter((t) => present.has(t)),
+    ...[...present].filter((t) => !CANON_TASKS.includes(t)),
+  ];
+
+  const A: Record<string, Record<string, Agg>> = {};
+  for (const task of tasks) {
+    A[task] = {};
+    for (const k of keys) {
+      A[task]![k] = agg(files[k]!.runs.filter((r) => r.task === task));
+    }
+  }
+
+  const verdicts = computeVerdicts(A, tasks, keys);
+  const receipts = loadReceipts();
+  const { green, red } = await loadColor();
+
+  // ── Console table (plain) ────────────────────────────────────────
+  console.log(`\n  AgentMint diagnostic — ${model}`);
+  console.log(`  Proxy pricing: $${PRICE_IN}/M in, $${PRICE_OUT}/M out (NOT an invoice)\n`);
+
+  const H =
+    pad("task", 15) + pad("arm", 15) + pad("promptTok (min-max)", 24) +
+    pad("out", 6) + pad("reason", 8) + pad("$prx", 8) + pad("succ", 7) +
+    pad("cap", 6) + pad("calls", 7) + pad("blk", 5) + pad("aftBlk", 8) + "dedup";
+  console.log("  " + H);
+  console.log("  " + "-".repeat(H.length));
+  for (const task of tasks) {
+    for (const k of keys) {
+      const a = A[task]![k]!;
+      console.log(
+        "  " + pad(task, 15) + pad(k, 15) +
+        pad(`${a.promptMed} (${a.promptMin}-${a.promptMax})`, 24) +
+        pad(String(a.outMed), 6) + pad(String(a.reasonMed), 8) +
+        pad(`$${a.usdMed.toFixed(3)}`, 8) + pad(pct(a.successRate), 7) +
+        pad(pct(a.turnCapRate), 6) + pad(String(a.callsMed), 7) +
+        pad(String(a.blockedMed), 5) + pad(String(a.afterBlockMed), 8) +
+        String(a.dedupMed),
+      );
+    }
+    console.log("");
+  }
+
+  // ── Verdicts (PASS green / FAIL red on the console) ──────────────
   console.log("  Verdicts:");
   for (const v of verdicts) {
-    console.log(`  ${v.pass ? "PASS" : "FAIL"}  ${v.id}`);
+    const tag = v.pass ? green("PASS") : red("FAIL");
+    console.log(`  ${tag}  ${v.id}`);
     console.log(`        ${v.detail}`);
   }
 
-  const core = verdicts.filter((v) => /^T[1-4]/.test(v.id));
+  const core = coreVerdicts(verdicts);
   if (core.length) {
     const allPass = core.every((v) => v.pass);
     console.log(
-      `\n  ${allPass ? "SHAPING THESIS SURVIVES — proceed to Model 2, then the $100 API phase (caching on vs off)." : "SHAPING THESIS DOES NOT SURVIVE as-is — see PROTOCOL.md kill criteria before spending on APIs."}`,
+      `\n  ${allPass ? green("SHAPING THESIS SURVIVES") + " — proceed to Model 2, then the $100 API phase (caching on vs off)." : red("SHAPING THESIS DOES NOT SURVIVE") + " as-is — see PROTOCOL.md kill criteria before spending on APIs."}`,
     );
   }
+  if (receipts) console.log(`\n  ${receipts.line}`);
   console.log("");
 
   // Zero-token guard.
@@ -221,6 +349,30 @@ function main(): void {
   if (anyBaseline && anyBaseline.runs.every((r) => r.promptTokens === 0)) {
     console.log("  WARNING: promptTokens all 0 — LM Studio did not return the usage field. Nothing above is a token measurement.\n");
   }
+
+  // ── Markdown + machine-readable aggregates ───────────────────────
+  if (MD) {
+    const md = buildMarkdown(model, files, tasks, keys, A, verdicts, receipts);
+    writeFileSync(join(OUT_DIR, "RESULTS.md"), md + "\n");
+    const results = {
+      model,
+      generatedAt: new Date().toISOString(),
+      priceIn: PRICE_IN,
+      priceOut: PRICE_OUT,
+      runsPerArm: Object.fromEntries(keys.map((k) => [k, files[k]!.runsPerTask])),
+      tasks,
+      arms: keys,
+      aggregates: A,
+      verdicts,
+      thesisSurvives: core.length > 0 && core.every((v) => v.pass),
+      receipts,
+    };
+    writeFileSync(join(OUT_DIR, "results.json"), JSON.stringify(results, null, 2) + "\n");
+    console.log(`  Wrote analysis/output/RESULTS.md and results.json\n`);
+  }
 }
 
-main();
+main().catch((err) => {
+  console.error(`\n  x ${err instanceof Error ? err.message : String(err)}\n`);
+  process.exitCode = 1;
+});

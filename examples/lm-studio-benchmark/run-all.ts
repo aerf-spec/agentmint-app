@@ -8,12 +8,16 @@
 // H8 (reasoning tokens) is captured on every arm automatically.
 //
 //   cd examples/lm-studio-benchmark
-//   RUNS=5 npx tsx run-all.ts                 # smoke
-//   RUNS=10 npx tsx run-all.ts                # final
-//   LM_STUDIO_MODEL=<name> RUNS=10 npx tsx run-all.ts
-//   ONLY=baseline,shaped npx tsx run-all.ts   # subset
+//   npx tsx run-all.ts                              # baseline/hardened x5, shaped/steer x10
+//   RUNS_BASELINE=10 RUNS_SHAPED=20 npx tsx run-all.ts
+//   RUNS=3 npx tsx run-all.ts                       # override both counts
+//   LM_STUDIO_MODEL=<name> npx tsx run-all.ts       # pick the model
+//   ONLY=baseline,shaped npx tsx run-all.ts         # subset of arms
 //
-// Writes analysis/output/diag-<arm>.json (raw per-run records).
+// Interleaves by task (outer) then arm (inner), writing analysis/output/
+// diag-<arm>.json incrementally after each task so a mid-run crash keeps the
+// data for finished tasks. Steer arms run only on blocking tasks. Also writes
+// raw per-run records and, for enforced arms, one AERF receipt per run.
 
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -49,8 +53,26 @@ import {
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = join(HERE, "analysis", "output");
 const MODEL = process.env.LM_STUDIO_MODEL ?? "qwen3.5-9b-mlx";
-const RUNS = Math.max(1, Number(process.env.RUNS ?? 5));
 const TASKS = [...ALL_TASKS, ...EXTRA_TASKS];
+
+// Tasks that actually trigger blocks — steer arms only run on these.
+const BLOCKING_TASKS = new Set(["coding-agent", "scope-creep", "loop-trigger"]);
+
+function envRuns(name: string, dflt: number): number {
+  const raw = process.env[name];
+  if (raw === undefined) return dflt;
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 1 ? Math.floor(n) : dflt;
+}
+// Asymmetric run counts: baseline/hardened are cheaper (RUNS_BASELINE, default
+// 5); shaped and every steer arm need more samples (RUNS_SHAPED, default 10). A
+// single RUNS env, when set, overrides both.
+const RUNS_OVERRIDE = process.env.RUNS !== undefined ? envRuns("RUNS", 5) : undefined;
+const RUNS_BASELINE = RUNS_OVERRIDE ?? envRuns("RUNS_BASELINE", 5);
+const RUNS_SHAPED = RUNS_OVERRIDE ?? envRuns("RUNS_SHAPED", 10);
+function runsForArm(key: string): number {
+  return key === "baseline" || key === "hardened" ? RUNS_BASELINE : RUNS_SHAPED;
+}
 
 // arm key -> { base arm for tools, steering on/off }
 interface ArmSpec {
@@ -109,12 +131,35 @@ function buildToolSet(base: Arm): DiagToolSetPlus {
   return set;
 }
 
+/** Serialize one arm's accumulated runs to diag-<arm>.json (full rewrite/merge). */
+function writeArmFile(arm: ArmSpec, runs: DiagRun[]): void {
+  writeFileSync(
+    join(OUT_DIR, `diag-${arm.key}.json`),
+    JSON.stringify(
+      {
+        model: MODEL,
+        armKey: arm.key,
+        baseArm: arm.base,
+        steering: arm.steering,
+        runsPerTask: runsForArm(arm.key),
+        generatedAt: new Date().toISOString(),
+        runs,
+      },
+      null,
+      2,
+    ) + "\n",
+  );
+}
+
 async function main(): Promise<void> {
   mkdirSync(OUT_DIR, { recursive: true });
   const client = makeClient();
 
-  console.log(`\n  AgentMint diagnostic — model: ${MODEL} — runs/task: ${RUNS}`);
+  console.log(`\n  AgentMint diagnostic — model: ${MODEL}`);
   console.log(`  Arms: ${ARMS.map((a) => a.key).join(", ")}`);
+  console.log(
+    `  Runs/task: baseline & hardened ${RUNS_BASELINE}; shaped, shaped-steer, hardened-steer ${RUNS_SHAPED}`,
+  );
   try {
     await client.models.list();
   } catch {
@@ -127,18 +172,46 @@ async function main(): Promise<void> {
     return;
   }
 
+  // Warmup: one throwaway completion so first-task timings aren't skewed by the
+  // model's initial load. Fired before the timer starts; failures are non-fatal.
+  try {
+    await client.chat.completions.create({
+      model: MODEL,
+      messages: [{ role: "user", content: "warmup" }],
+      max_tokens: 1,
+      temperature: 0,
+    });
+  } catch {
+    /* non-fatal — the real runs will surface a genuine connection problem */
+  }
+  console.log("  warmup done");
+
   const RECEIPTS_DIR = join(OUT_DIR, "receipts");
   const outcomes: ReceiptOutcome[] = [];
 
-  const t0 = Date.now();
+  // Accumulate each arm's runs across tasks; truncate raw logs once up front.
+  const runsByArm = new Map<string, DiagRun[]>();
   for (const arm of ARMS) {
-    const rawLog = join(OUT_DIR, `diag-${arm.key}-raw.jsonl`);
-    writeFileSync(rawLog, "");
-    const runs: DiagRun[] = [];
-    console.log(`\n  === ARM: ${arm.key} ===`);
-    for (const task of TASKS) {
-      process.stdout.write(`  > ${task.name} `);
-      for (let i = 1; i <= RUNS; i++) {
+    runsByArm.set(arm.key, []);
+    writeFileSync(join(OUT_DIR, `diag-${arm.key}-raw.jsonl`), "");
+  }
+
+  const t0 = Date.now();
+  // Outer loop = TASKS, inner = ARMS, so every diag-<arm>.json is complete for
+  // all finished tasks even if a later task crashes.
+  for (const task of TASKS) {
+    const taskStart = Date.now();
+    console.log(`\n  === TASK: ${task.name} ===`);
+    for (const arm of ARMS) {
+      if (arm.steering && !BLOCKING_TASKS.has(task.name)) {
+        console.log(`  - ${arm.key}: skipped (non-blocking task)`);
+        continue;
+      }
+      const runsN = runsForArm(arm.key);
+      const rawLog = join(OUT_DIR, `diag-${arm.key}-raw.jsonl`);
+      const armRuns = runsByArm.get(arm.key)!;
+      process.stdout.write(`  > ${arm.key} `);
+      for (let i = 1; i <= runsN; i++) {
         const toolset = buildToolSet(arm.base);
         const r = await runSingleDiag(client, toolset, task, {
           model: MODEL,
@@ -147,10 +220,10 @@ async function main(): Promise<void> {
           runIndex: i,
           steering: arm.steering,
         });
-        runs.push(r);
-        // Prompt 3: for the hardened/shaped arms only, emit + verify one AERF
-        // receipt per run. This runs AFTER the completion returns (never in the
-        // request path); baseline exposes no record/verify, so it is skipped.
+        armRuns.push(r);
+        // Prompt 3: for enforced (hardened/shaped) arms only, emit + verify one
+        // AERF receipt per run — AFTER the completion returns, never in the
+        // request path. Baseline exposes no record/verify, so it is skipped.
         if (toolset.record && toolset.verify) {
           outcomes.push(
             emitReceipt(RECEIPTS_DIR, arm.key, task.name, i, {
@@ -162,24 +235,11 @@ async function main(): Promise<void> {
         process.stdout.write(r.success ? "." : "x");
       }
       process.stdout.write("\n");
+      // Incremental write: this arm now holds every finished task's runs.
+      writeArmFile(arm, armRuns);
     }
-    writeFileSync(
-      join(OUT_DIR, `diag-${arm.key}.json`),
-      JSON.stringify(
-        {
-          model: MODEL,
-          armKey: arm.key,
-          baseArm: arm.base,
-          steering: arm.steering,
-          runsPerTask: RUNS,
-          generatedAt: new Date().toISOString(),
-          runs,
-        },
-        null,
-        2,
-      ) + "\n",
-    );
-    console.log(`  Wrote diag-${arm.key}.json (${runs.length} runs)`);
+    const secs = ((Date.now() - taskStart) / 1000).toFixed(1);
+    console.log(`  task ${task.name} done in ${secs}s`);
   }
 
   // Post-benchmark: verification pass over every emitted receipt, then record
@@ -190,7 +250,7 @@ async function main(): Promise<void> {
 
   const mins = ((Date.now() - t0) / 60000).toFixed(1);
   console.log(
-    `\n  Done in ${mins} min. Now run:  npx tsx compare3.ts\n` +
+    `\n  Done in ${mins} min. Now run:  npx tsx compare3.ts --md\n` +
       `  '.' = task success, 'x' = task failure (watch the shaped arms).\n` +
       `  If promptTokens are all 0, LM Studio is not returning usage — fix that first.\n` +
       `\n  ${summary.line}\n` +
