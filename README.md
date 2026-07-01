@@ -1,7 +1,6 @@
 # agentmint-sdk
 
-**Cryptographic receipts for agent actions.** One-line instrumentation.
-Tamper-evident audit trails for agentic workflows.
+**Stop your agent from retrying, overspending, and breaking things — before the call runs**
 
 ## Why this exists
 
