@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { harden } from "./harden.js";
+import { harden } from "../experimental/harden.js";
 import { loadSpec } from "./spec.js";
-import { createRunState } from "./log.js";
-import { formatJSONL } from "./jsonl.js";
+import { createRunState } from "../log.js";
+import { formatJSONL } from "../jsonl.js";
 import {
   checkBudgetGuardrails,
   estimateCallCost,
@@ -10,7 +10,7 @@ import {
   resolveCostCap,
   resolveUsageCap,
 } from "./budget.js";
-import type { AgentMintConfig, BlockResponse, RunState } from "./types.js";
+import type { AgentMintConfig, BlockResponse, RunState } from "../types.js";
 
 const isBlock = (r: unknown): r is BlockResponse =>
   typeof r === "object" && r !== null && (r as BlockResponse).error === true;
@@ -443,7 +443,7 @@ describe("13. backward compatibility", () => {
     const config: AgentMintConfig = { budget: 5, costEstimator: () => 0 };
     const state = createRunState(config);
     state.totalCost = 10;
-    const { enforce } = await import("./enforce.js");
+    const { enforce } = await import("../experimental/enforce.js");
     const r = await enforce("cheap_tool", {}, async () => ({ ok: true }), config, state);
     expect(isBlock(r)).toBe(true);
     expect(state.status).toBe("killed");

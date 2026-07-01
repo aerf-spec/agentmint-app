@@ -6,7 +6,7 @@ import { wrapAll as wrapOpenAI } from "./openai.js";
 import { wrapAll as wrapRaw } from "./raw.js";
 import { wrapAll as wrapVercel } from "./vercel.js";
 import { harden } from "../harden.js";
-import type { EnforcerFn } from "../types.js";
+import type { EnforcerFn } from "../../types.js";
 
 describe("adapters", () => {
   it("raw_enforcement", async () => {

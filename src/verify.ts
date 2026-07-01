@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { canonicalize } from "./merkle.js";
-import { loadSpec } from "./spec.js";
-import { matchPattern } from "./cross-ref.js";
+import { loadSpec } from "./kernel/spec.js";
+import { matchPattern } from "./kernel/cross-ref.js";
 import type { AgentMintSpec } from "./types.js";
 import * as C from "./cli/color.js";
 

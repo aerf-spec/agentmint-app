@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { AgentMintReport, buildRecord, harden } from "./index.js";
+import { buildRecord } from "./index.js";
+import { harden } from "./experimental/harden.js";
+import { AgentMintReport } from "./experimental/report.js";
 import type { AERFRecord, AgentMintConfig } from "./index.js";
 
 describe("integration", () => {

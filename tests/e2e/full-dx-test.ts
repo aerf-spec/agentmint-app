@@ -9,7 +9,9 @@
 // Optional: set LM_STUDIO=1 to test against real Qwen
 //   LM_STUDIO=1 npx tsx tests/e2e/full-dx-test.ts
 
-import { harden, loadSpec, watchTool } from "../../src/index.js";
+import { harden } from "../../src/experimental/harden.js";
+import { loadSpec } from "../../src/kernel/spec.js";
+import { watchTool } from "../../src/experimental/adapters/generic.js";
 import { formatJSONL, parseJSONL } from "../../src/jsonl.js";
 import { writeFileSync, readFileSync, existsSync, mkdirSync, unlinkSync } from "node:fs";
 import { execSync } from "node:child_process";

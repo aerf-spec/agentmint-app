@@ -1,4 +1,4 @@
-import type { ReportOptions, RunState } from "./types.js";
+import type { ReportOptions, RunState } from "../types.js";
 
 export function parseDuration(s: string): number {
   return parseInt(s, 10) * 86_400_000;

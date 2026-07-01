@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { inferSpec, mergeSpecs, serializeSpec } from "./learn.js";
-import { loadSpec } from "./spec.js";
+import { loadSpec } from "../kernel/spec.js";
 import { harden } from "./harden.js";
-import type { JSONLEvent, RunState } from "./types.js";
+import type { JSONLEvent, RunState } from "../types.js";
 
 function ev(partial: Partial<JSONLEvent> & { tool: string; result: string }): JSONLEvent {
   return {

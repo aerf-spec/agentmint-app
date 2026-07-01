@@ -1,3 +1,9 @@
+/**
+ * @kernel
+ * Part of the AgentMint verification kernel. The wedge (receipt/verify/gate)
+ * depends on this module, so it must never be made optional, bypassable, or
+ * relocated to experimental/. Kernel modules must not import from experimental/.
+ */
 export function redact(
   params: Record<string, unknown>,
   boundKeys: readonly string[],

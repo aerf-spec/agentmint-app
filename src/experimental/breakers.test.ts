@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { checkBreakers } from "./breakers.js";
-import { createSession, hashArgs, recordInput } from "./session.js";
-import type { SessionStore } from "./types.js";
+import { createSession, hashArgs, recordInput } from "../session.js";
+import type { SessionStore } from "../types.js";
 
 /** Push a synthetic call-history entry with an explicit timestamp. */
 function pushCall(s: SessionStore, tool: string, args: Record<string, unknown>, timestamp: number): void {

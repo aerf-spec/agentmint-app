@@ -5,8 +5,8 @@ import {
   validateInputCrossRefs,
   validateOutputCrossRefs,
 } from "./cross-ref.js";
-import { createSession, recordInput, recordOutput } from "./session.js";
-import type { AgentMintSpec } from "./types.js";
+import { createSession, recordInput, recordOutput } from "../session.js";
+import type { AgentMintSpec } from "../types.js";
 
 function specWith(properties: AgentMintSpec["tools"]): AgentMintSpec {
   return { version: "1.0", tools: properties };

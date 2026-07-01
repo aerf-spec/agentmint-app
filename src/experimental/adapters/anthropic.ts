@@ -1,4 +1,4 @@
-import type { EnforcerFn } from "../types.js";
+import type { EnforcerFn } from "../../types.js";
 
 interface AnthropicTool {
   name: string;

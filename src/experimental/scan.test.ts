@@ -7,8 +7,8 @@ import {
   generateSpecYaml,
   scanDir,
   runScan,
-} from "./cli/scan.js";
-import { loadSpec } from "./spec.js";
+} from "../cli/scan.js";
+import { loadSpec } from "../kernel/spec.js";
 
 let dir: string;
 

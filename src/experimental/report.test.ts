@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { AgentMintReport } from "./report.js";
-import type { Event, RunState } from "./types.js";
+import type { Event, RunState } from "../types.js";
 
 const makeState = (overrides?: Partial<RunState>): RunState => ({
   runId: "amr_test1234",

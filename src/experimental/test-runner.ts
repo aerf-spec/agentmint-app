@@ -1,6 +1,6 @@
 import { harden } from "./harden.js";
-import { loadSpec } from "./spec.js";
-import type { AgentMintConfig, RunState } from "./types.js";
+import { loadSpec } from "../kernel/spec.js";
+import type { AgentMintConfig, RunState } from "../types.js";
 
 /** A single behavioural test case run against a hardened tool set. */
 export interface Scenario {

@@ -5,7 +5,7 @@ import type {
   SpecBreakerConfig,
   SpecPropertyConfig,
   SpecToolConfig,
-} from "./types.js";
+} from "../types.js";
 
 // ── Violation extraction ───────────────────────────────────────────
 // A receipt event records a violation via its `reason` (the violation type)

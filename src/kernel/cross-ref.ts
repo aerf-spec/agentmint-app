@@ -1,5 +1,11 @@
-import type { AgentMintSpec, SessionStore, Violation } from "./types.js";
-import { resolveRef } from "./session.js";
+/**
+ * @kernel
+ * Part of the AgentMint verification kernel. The wedge (receipt/verify/gate)
+ * depends on this module, so it must never be made optional, bypassable, or
+ * relocated to experimental/. Kernel modules must not import from experimental/.
+ */
+import type { AgentMintSpec, SessionStore, Violation } from "../types.js";
+import { resolveRef } from "../session.js";
 import { resolveAction } from "./spec.js";
 
 /**

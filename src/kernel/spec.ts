@@ -1,5 +1,11 @@
+/**
+ * @kernel
+ * Part of the AgentMint verification kernel. The wedge (receipt/verify/gate)
+ * depends on this module, so it must never be made optional, bypassable, or
+ * relocated to experimental/. Kernel modules must not import from experimental/.
+ */
 import { readFileSync } from "node:fs";
-import type { AgentMintSpec, RuleAction } from "./types.js";
+import type { AgentMintSpec, RuleAction } from "../types.js";
 
 // ── Minimal YAML subset parser ─────────────────────────────────────
 // Handles: scalars, maps, sequences, comments, quoted strings.

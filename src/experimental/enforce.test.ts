@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { enforce } from "./enforce.js";
-import { createRunState } from "./log.js";
-import type { AgentMintConfig, AgentMintSpec, BlockResponse } from "./types.js";
+import { createRunState } from "../log.js";
+import type { AgentMintConfig, AgentMintSpec, BlockResponse } from "../types.js";
 
 const tool = async () => ({ ok: true });
 const isBlock = (r: unknown): r is BlockResponse =>

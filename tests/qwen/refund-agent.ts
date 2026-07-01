@@ -4,8 +4,8 @@
 // Requires: LM Studio running on localhost:1234 with Qwen3.5 4B or Qwen3 14B loaded
 
 import OpenAI from "openai";
-import { harden } from "../../src/harden.js";
-import { loadSpec } from "../../src/spec.js";
+import { harden } from "../../src/experimental/harden.js";
+import { loadSpec } from "../../src/kernel/spec.js";
 import type { AgentMintConfig, RunState } from "../../src/types.js";
 
 const client = new OpenAI({

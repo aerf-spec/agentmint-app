@@ -1,3 +1,9 @@
+/**
+ * @kernel
+ * Part of the AgentMint verification kernel. The wedge (receipt/verify/gate)
+ * depends on this module, so it must never be made optional, bypassable, or
+ * relocated to experimental/. Kernel modules must not import from experimental/.
+ */
 // Budget Guardrails — pre-flight cost enforcement at the tool boundary.
 //
 // Every function here is pure and deterministic: given the same spec, config,
@@ -16,7 +22,7 @@ import type {
   RuleAction,
   RunState,
   Violation,
-} from "./types.js";
+} from "../types.js";
 
 /** Hard caps default to blocking; a warn is opt-in via `action: warn`. */
 const DEFAULT_ACTION: RuleAction = "block";

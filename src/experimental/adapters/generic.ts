@@ -1,4 +1,4 @@
-import type { EnforcerFn } from "../types.js";
+import type { EnforcerFn } from "../../types.js";
 
 export function watchTool<T extends (...args: unknown[]) => Promise<unknown>>(
   name: string,

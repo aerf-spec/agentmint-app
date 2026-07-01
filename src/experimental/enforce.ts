@@ -1,10 +1,10 @@
-import type { AgentMintConfig, RunState, Violation } from "./types.js";
+import type { AgentMintConfig, RunState, Violation } from "../types.js";
 import { matchesAny } from "./matcher.js";
-import { blockResponse, logEvent } from "./log.js";
-import { recordInput, recordOutput } from "./session.js";
-import { validateInputCrossRefs, validateOutputCrossRefs, checkRequires } from "./cross-ref.js";
+import { blockResponse, logEvent } from "../log.js";
+import { recordInput, recordOutput } from "../session.js";
+import { validateInputCrossRefs, validateOutputCrossRefs, checkRequires } from "../kernel/cross-ref.js";
 import { checkBreakers } from "./breakers.js";
-import { checkBudgetGuardrails, guardrailsActive, staticEstimate, roundUsd } from "./budget.js";
+import { checkBudgetGuardrails, guardrailsActive, staticEstimate, roundUsd } from "../kernel/budget.js";
 
 type BudgetContext = { estimate?: number; cumulative?: number; callIndex?: number };
 
@@ -233,7 +233,7 @@ export async function enforce(
     state.heldCount++;
     logEvent(state, tool, params, "held", { reason: "checkpoint_required" });
     if (config.gate) {
-      const { gate } = await import("./gate.js");
+      const { gate } = await import("../gate.js");
       const result = await gate({
         action: tool,
         context: params,

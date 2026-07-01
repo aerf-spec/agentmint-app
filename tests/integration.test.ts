@@ -1,13 +1,13 @@
 import { test, describe } from "node:test";
 import assert from "node:assert/strict";
-import { harden } from "../src/harden.js";
-import { loadSpec } from "../src/spec.js";
-import { watchTool } from "../src/adapters/generic.js";
-import { wrapAll as wrapAnthropic } from "../src/adapters/anthropic.js";
+import { harden } from "../src/experimental/harden.js";
+import { loadSpec } from "../src/kernel/spec.js";
+import { watchTool } from "../src/experimental/adapters/generic.js";
+import { wrapAll as wrapAnthropic } from "../src/experimental/adapters/anthropic.js";
 import { formatJSONL, parseJSONL } from "../src/jsonl.js";
 import { createSession, recordInput, recordOutput, resolveRef, hashArgs } from "../src/session.js";
-import { validateInputCrossRefs, validateOutputCrossRefs, checkRequires } from "../src/cross-ref.js";
-import { checkBreakers } from "../src/breakers.js";
+import { validateInputCrossRefs, validateOutputCrossRefs, checkRequires } from "../src/kernel/cross-ref.js";
+import { checkBreakers } from "../src/experimental/breakers.js";
 import type { AgentMintConfig, RunState, EnforcerFn } from "../src/types.js";
 
 // ── Spec Parser Tests ──────────────────────────────────────────

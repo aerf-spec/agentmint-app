@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { harden } from "./harden.js";
-import { MerkleTree } from "./merkle.js";
+import { MerkleTree } from "../merkle.js";
 
 describe("harden", () => {
   it("wraps_record", async () => {

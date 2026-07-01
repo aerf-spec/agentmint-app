@@ -1,5 +1,5 @@
-import type { SessionStore, SpecBreakerConfig, Violation } from "./types.js";
-import { hashArgs } from "./session.js";
+import type { SessionStore, SpecBreakerConfig, Violation } from "../types.js";
+import { hashArgs } from "../session.js";
 
 export function checkBreakers(
   tool: string,

@@ -1,4 +1,4 @@
-import type { EnforcerFn } from "../types.js";
+import type { EnforcerFn } from "../../types.js";
 
 export function wrapAll(
   tools: Record<string, { execute?: (...args: unknown[]) => Promise<unknown>; [key: string]: unknown }>,

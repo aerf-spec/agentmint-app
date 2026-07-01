@@ -1,10 +1,10 @@
-import { runSuite, type Scenario, type SuiteResult } from "../test-runner.js";
+import { runSuite, type Scenario, type SuiteResult } from "../experimental/test-runner.js";
 import { brand, dim, fg, green, muted, red, yellow } from "./color.js";
 
 const SUITES: Record<string, () => Promise<{ scenarios: Scenario[] }>> = {
-  "prior-auth": () => import("../suites/prior-auth.js"),
-  "coding-agent": () => import("../suites/coding-agent.js"),
-  "refund-agent": () => import("../suites/refund-agent.js"),
+  "prior-auth": () => import("../experimental/suites/prior-auth.js"),
+  "coding-agent": () => import("../experimental/suites/coding-agent.js"),
+  "refund-agent": () => import("../experimental/suites/refund-agent.js"),
 };
 
 function parseArgs(argv: string[]): {
