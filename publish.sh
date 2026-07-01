@@ -5,6 +5,10 @@ echo ""
 echo "🌿 AgentMint — Pre-Publish Checks"
 echo ""
 
+# Read name + version straight from package.json (no jq dependency)
+PKG_NAME=$(node -p "require('./package.json').name")
+PKG_VERSION=$(node -p "require('./package.json').version")
+
 # 1. Clean install
 echo "  → npm install"
 npm install --silent
@@ -47,7 +51,7 @@ echo ""
 
 # 9. Confirm
 echo "══════════════════════════════════"
-echo "  Ready to publish @npmsai/agentmint@0.2.0"
+echo "  Ready to publish ${PKG_NAME}@${PKG_VERSION}"
 echo "══════════════════════════════════"
 echo ""
 read -p "  Publish to npm? (y/n) " -n 1 -r
