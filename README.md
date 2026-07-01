@@ -13,7 +13,7 @@ AgentMint sits at the tool boundary and turns every agent action into a signed,
 hash-chained receipt an auditor can verify later — without trusting the agent,
 the app, or the vendor.
 
-## The wedge: wrap → receipt → verify
+## How it works: wrap → receipt → verify
 
 ```ts
 import {
@@ -38,7 +38,7 @@ const report = await verify({ dir: "./src", spec: "agentmint.spec.yaml" });
 console.log(report.summary); // { verified, failed, unverified, blocked }
 ```
 
-Zero runtime dependencies. Dual ESM/CJS. Node `>=18`.
+Zero runtime dependencies. Dual ESM/CJS. Node `>=18`. Python coming soon.
 
 ## Install
 
