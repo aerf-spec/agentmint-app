@@ -1,5 +1,17 @@
 #!/usr/bin/env node
+import { readFileSync } from "node:fs";
 import { brand, dim, fg, muted, red } from "./color.js";
+
+const VERSION = (() => {
+  try {
+    const pkg = JSON.parse(
+      readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
+    ) as { version?: string };
+    return pkg.version ?? "0.0.0";
+  } catch {
+    return "0.0.0";
+  }
+})();
 
 const cmd = process.argv[2];
 
@@ -15,7 +27,7 @@ const commands: Record<string, () => Promise<void>> = {
 
 function showHelp(): void {
   console.log("");
-  console.log(`  ${brand()}  ${dim("v0.2.0")}`);
+  console.log(`  ${brand()}  ${dim(`v${VERSION}`)}`);
   console.log(`  ${muted("Runtime guardrails for AI agents")}`);
   console.log("");
   console.log(`  ${fg("Usage:")}  agentmint ${dim("<command>")}`);
@@ -44,7 +56,7 @@ function showHelp(): void {
 if (!cmd || cmd === "help" || cmd === "--help" || cmd === "-h") {
   showHelp();
 } else if (cmd === "version" || cmd === "--version" || cmd === "-v") {
-  console.log("0.2.0");
+  console.log(VERSION);
 } else if (commands[cmd]) {
   commands[cmd]!().catch((error) => {
     const message = error instanceof Error ? error.message : String(error);
