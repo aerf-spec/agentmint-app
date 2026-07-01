@@ -11,6 +11,15 @@ export { MerkleTree, canonicalize } from "./merkle.js";
 export { formatJSONL, parseJSONL, eventToJSONL } from "./jsonl.js";
 export { runSuite, classify } from "./test-runner.js";
 export type { Scenario, ScenarioResult, SuiteResult } from "./test-runner.js";
+export { runHarness } from "./harness.js";
+export type {
+  HarnessStep,
+  HarnessOptions,
+  HarnessResult,
+  HarnessCounts,
+  StepResult,
+  StepOutcome,
+} from "./harness.js";
 export { inferSpec, serializeSpec, mergeSpecs } from "./learn.js";
 export { gate, gateChainTip } from "./gate.js";
 export type { GateOptions, GateResult } from "./gate.js";
