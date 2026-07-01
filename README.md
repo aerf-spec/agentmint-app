@@ -1,9 +1,9 @@
 # AgentMint
 
-Your AI agent has shell access, file access, and API keys.
-What's stopping it from reading `.env`, running `rm -rf`, or pushing to `main`?
+You asked your agent to fix one file.
+It also read .env, edited package.json, ran rm -rf, and pushed to main.
 
-One line wraps your tools. Catches dangerous calls before they execute.
+`npx @npmsai/agentmint demo a` — see it happen.
 
 ## See it
 

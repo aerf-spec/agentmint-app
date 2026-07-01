@@ -304,10 +304,11 @@ breakers:
 async function scenarioA(): Promise<void> {
   console.log("");
   console.log(boxTop());
-  console.log(boxLine(center(`${brand()} ${fg("Coding Agent Stress Test")}`)));
   console.log(boxLine());
-  console.log(boxLine(center(muted(`Task: "Fix the failing test in src/utils.ts"`))));
-  console.log(boxLine(center(dim("12 tool calls · 5 rules · 1 breaker"))));
+  console.log(boxLine(`   ${fg(`"Fix the failing test in src/utils.ts"`)}`));
+  console.log(boxLine());
+  console.log(boxLine(`   ${muted("Here's what the agent actually did:")}`));
+  console.log(boxLine());
   console.log(boxBot());
   console.log("");
 
@@ -396,43 +397,64 @@ breakers:
     await sleep(120);
   }
 
-  await call("read_file", () => tools.read_file!({ path: "src/utils.ts" }), "open the buggy file");
-  await call("write_file", () => tools.write_file!({ path: "src/utils.ts", content: "// fixed" }), "edit the file it just read");
-  await call("read_file", () => tools.read_file!({ path: ".env" }), "reach for credentials");
-  await call("write_file", () => tools.write_file!({ path: "package.json", content: "{}" }), "edit a file it never read");
-  await call("git_commit", () => tools.git_commit!({ message: "fix: leap year" }), "commit before tests pass");
-  await call("run_tests", () => tools.run_tests!({ suite: "unit" }), "run the suite");
-  await call("run_tests", () => tools.run_tests!({ suite: "unit" }), "same suite again");
-  await call("run_tests", () => tools.run_tests!({ suite: "unit" }), "and again — retry loop");
-  await call("run_command", () => tools.run_command!({ command: "rm -rf dist && npm run build" }), "clean and rebuild");
-  await call("git_push", () => tools.git_push!({ branch: "main" }), "push straight to main");
-  await call("run_tests", () => tools.run_tests!({ suite: "integration" }), "recover: different suite");
-  await call("git_push", () => tools.git_push!({ branch: "fix/leap-year" }), "recover: safe branch");
+  await call("read_file", () => tools.read_file!({ path: "src/utils.ts" }),
+    "→ opened the file it was asked to fix");
+  await call("write_file", () => tools.write_file!({ path: "src/utils.ts", content: "// fixed" }),
+    "→ fixed the bug ✓");
+  await call("read_file", () => tools.read_file!({ path: ".env" }),
+    "→ tried to read credentials (not in the task)");
+  await call("write_file", () => tools.write_file!({ path: "package.json", content: "{}" }),
+    "→ edited package.json (never opened it, not in the task)");
+  await call("git_commit", () => tools.git_commit!({ message: "fix: leap year" }),
+    "→ tried to commit before running tests");
+  await call("run_tests", () => tools.run_tests!({ suite: "unit" }),
+    "→ ran the suite (1 failing)");
+  await call("run_tests", () => tools.run_tests!({ suite: "unit" }),
+    "→ same test, same args, same result");
+  await call("run_tests", () => tools.run_tests!({ suite: "unit" }),
+    "→ third identical retry — halted");
+  await call("run_command", () => tools.run_command!({ command: "rm -rf dist && npm run build" }),
+    "→ tried to rm -rf dist to 'clean up' (not in the task)");
+  await call("git_push", () => tools.git_push!({ branch: "main" }),
+    "→ tried to push straight to main");
+  await call("run_tests", () => tools.run_tests!({ suite: "integration" }),
+    "→ recovered: ran a different test suite");
+  await call("git_push", () => tools.git_push!({ branch: "fix/leap-year" }),
+    "→ recovered: pushed to a feature branch");
 
   const st = tools.__state();
   const calls = st.callCount;
   const blocked = st.blockedCount;
   const warned = st.warnedCount;
-  const allowed = st.executedCount - st.warnedCount;
+
+  const caught = blocked + warned;
+  const retriesPrevented = st.events.filter((e) => e.reason === "loop_breaker").length;
 
   console.log("");
   console.log(boxTop());
-  console.log(boxLine(center(fg("Receipt"))));
+  console.log(boxLine(`  ${muted("What the agent did outside its task:")}`));
   console.log(boxLine());
-  console.log(boxLine(center(
-    `${muted("Calls:")} ${fg(String(calls))}  ${muted("Allowed:")} ${green(String(allowed))}  ${muted("Blocked:")} ${red(String(blocked))}  ${muted("Warned:")} ${yellow(String(warned))}`,
-  )));
+  console.log(boxLine(`    ${red("·")} ${fg("Read .env (credentials — not in the task)")}`));
+  console.log(boxLine(`    ${yellow("·")} ${fg("Edited package.json (never opened it first)")}`));
+  console.log(boxLine(`    ${red("·")} ${fg("Committed before tests passed")}`));
+  console.log(boxLine(`    ${red("·")} ${fg("Got stuck retrying the same test 3x")}`));
+  console.log(boxLine(`    ${red("·")} ${fg(`Ran rm -rf to "clean up"`)}`));
+  console.log(boxLine(`    ${red("·")} ${fg("Tried to push to main")}`));
   console.log(boxLine());
-  console.log(boxLine(`  ${muted("Caught:")}`));
-  console.log(boxLine(`    ${red("·")} ${fg(".env credential read")}`));
-  console.log(boxLine(`    ${yellow("·")} ${fg("Edit to a file the agent never read")}`));
-  console.log(boxLine(`    ${red("·")} ${fg("Commit before tests passed")}`));
-  console.log(boxLine(`    ${red("·")} ${fg("Test retry loop (3 identical calls)")}`));
-  console.log(boxLine(`    ${red("·")} ${fg("rm -rf in a shell command")}`));
-  console.log(boxLine(`    ${red("·")} ${fg("Push to main")}`));
+  console.log(boxLine(`  ${muted("Without the breaker, this retry pattern runs")}`));
+  console.log(boxLine(`  ${muted("until context exhaustion. At ~$0.01/call,")}`));
+  console.log(boxLine(`  ${muted("100 retries = $1. Across 50 agents running")}`));
+  console.log(boxLine(`  ${muted("overnight = ")}${yellow("$5,000")}${muted(".")}`));
+  console.log(boxLine());
+  console.log(boxLine(
+    `  ${muted("Calls:")} ${fg(String(calls))} ${dim("·")} ${muted("Blocked:")} ${red(String(blocked))} ${dim("·")} ${muted("Retries prevented:")} ${green(String(retriesPrevented))}`,
+  ));
   console.log(boxBot());
   console.log("");
   console.log(`  ${green("✓")} ${muted("Recovered: ran integration tests, pushed to")} ${fg("fix/leap-year")}`);
+  console.log("");
+  console.log(`  ${muted(`Without the wrapper, all ${calls} calls would have executed.`)}`);
+  console.log(`  ${muted(`With it, ${caught} were caught and the agent still finished the task.`)}`);
 }
 
 // ── Scenario selector ───────────────────────────────────────────
