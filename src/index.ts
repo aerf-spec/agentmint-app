@@ -1,8 +1,16 @@
 // AgentMint SDK — cryptographic receipts for agent actions.
 //
-// This is the public surface. It exposes only the wedge: wrap an agent action,
-// get a signed receipt, verify it later. Optional guardrails (budget, learning,
-// enforcement, adapters) live in ./experimental and are not exported here.
+// This is the public surface. It exposes the wedge (wrap an agent action, get a
+// signed receipt, verify it later) plus the two primary entry points every user
+// imports: harden() and loadSpec(). Everything else in ./experimental and
+// ./kernel is internal.
+
+// harden — one-line auto-wrapper: instrument all your tools at once.
+//          THE primary public API — `const tools = harden(myTools)`.
+export { harden } from "./experimental/harden.js";
+
+// loadSpec — load and normalize an agentmint.spec.yaml
+export { loadSpec } from "./kernel/spec.js";
 
 // receipt — build a signed, tamper-evident record of an agent action
 export * from "./receipt.js";
