@@ -44,7 +44,7 @@ function section(name: string): void {
 // ════════════════════════════════════════════════════════════════
 
 async function phase1_firstContact(): Promise<void> {
-  section("Phase 1: First Contact (npx agentmint demo)");
+  section("Phase 1: First Contact (npx @npmsai/agentmint demo)");
 
   // Test: demo menu shows without args
   try {
@@ -53,7 +53,7 @@ async function phase1_firstContact(): Promise<void> {
       encoding: "utf-8",
       timeout: 10000,
     });
-    assert(menuOutput.includes("Scenario"), "demo menu renders");
+    assert(menuOutput.includes("Demo"), "demo menu renders");
     assert(menuOutput.includes("[1]") || menuOutput.includes("1"), "menu shows scenario options");
   } catch (e) {
     assert(false, "demo menu renders", String(e));
@@ -766,13 +766,126 @@ breakers:
       "npx tsx src/cli/entry.ts version 2>&1",
       { cwd: process.cwd(), encoding: "utf-8", timeout: 5000 },
     );
-    assert(version.trim() === "0.1.0", "version: prints 0.1.0");
+    assert(version.trim() === "0.2.0", "version: prints 0.2.0");
   } catch (e) {
     assert(false, "version: command works", String(e));
   }
 
   // Cleanup
   if (existsSync("_test_spec.yaml")) unlinkSync("_test_spec.yaml");
+}
+
+// ════════════════════════════════════════════════════════════════
+// PHASE 7b: test + learn commands (v0.2.0)
+// ════════════════════════════════════════════════════════════════
+
+async function phase7b_newCommands(): Promise<void> {
+  section("Phase 7b: test + learn commands");
+
+  // Test: `agentmint test --list` shows the built-in suites
+  try {
+    const list = execSync("npx tsx src/cli/entry.ts test --list 2>&1", {
+      cwd: process.cwd(),
+      encoding: "utf-8",
+      timeout: 10000,
+    });
+    assert(list.includes("prior-auth"), "test --list: shows prior-auth");
+    assert(list.includes("coding-agent"), "test --list: shows coding-agent");
+    assert(list.includes("refund-agent"), "test --list: shows refund-agent");
+  } catch (e) {
+    assert(false, "test --list works", String(e));
+  }
+
+  // Test: each suite runs clean and exits 0
+  for (const suite of ["prior-auth", "coding-agent", "refund-agent"]) {
+    try {
+      const out = execSync(`npx tsx src/cli/entry.ts test --suite ${suite} --json 2>&1`, {
+        cwd: process.cwd(),
+        encoding: "utf-8",
+        timeout: 15000,
+      });
+      const parsed = JSON.parse(out);
+      assert(parsed.failed === 0, `test --suite ${suite}: all scenarios pass`);
+      assert(parsed.total === parsed.passed, `test --suite ${suite}: total === passed`);
+    } catch (e) {
+      assert(false, `test --suite ${suite} runs`, String(e).slice(0, 120));
+    }
+  }
+
+  // Test: unknown suite exits non-zero
+  try {
+    execSync("npx tsx src/cli/entry.ts test --suite nope 2>&1", {
+      cwd: process.cwd(),
+      encoding: "utf-8",
+      timeout: 10000,
+    });
+    assert(false, "test: unknown suite exits non-zero");
+  } catch {
+    assert(true, "test: unknown suite exits non-zero");
+  }
+
+  // Test: `agentmint learn --from <file>` infers a spec from receipts
+  const receiptPath = "_test_incident.jsonl";
+  try {
+    writeFileSync(
+      receiptPath,
+      [
+        JSON.stringify({
+          timestamp: "2026-07-01T00:00:00.000Z",
+          runId: "amr_e2e",
+          tool: "issue_refund",
+          result: "blocked",
+          reason: "requires",
+          details: '"lookup_order" must be called before "issue_refund"',
+        }),
+        JSON.stringify({
+          timestamp: "2026-07-01T00:00:01.000Z",
+          runId: "amr_e2e",
+          tool: "git_push",
+          result: "blocked",
+          reason: "blocked_value",
+          details: 'branch has blocked value "main"',
+        }),
+      ].join("\n"),
+      "utf-8",
+    );
+    const learned = execSync(`npx tsx src/cli/entry.ts learn --from ${receiptPath} 2>&1`, {
+      cwd: process.cwd(),
+      encoding: "utf-8",
+      timeout: 10000,
+    });
+    assert(learned.includes('version: "1.0"'), "learn: emits a versioned spec");
+    assert(learned.includes("issue_refund"), "learn: recovers the offending tool");
+    assert(learned.includes("requires"), "learn: recovers the requires rule");
+
+    // The learned spec must parse back and re-catch the violation.
+    const spec = loadSpec(learned);
+    const tools = harden(
+      {
+        lookup_order: async () => ({ total: 10 }),
+        issue_refund: async () => ({ ok: true }),
+      },
+      { spec, silent: true },
+    ) as Record<string, Function> & { __state(): RunState };
+    await tools.issue_refund!({ order_id: "ORD-1", amount: 5 });
+    assert(tools.__state().blockedCount > 0, "learn: re-applied spec catches the violation");
+  } catch (e) {
+    assert(false, "learn --from works", String(e).slice(0, 120));
+  } finally {
+    if (existsSync(receiptPath)) unlinkSync(receiptPath);
+  }
+
+  // Test: `agentmint learn --help` shows usage
+  try {
+    const help = execSync("npx tsx src/cli/entry.ts learn --help 2>&1", {
+      cwd: process.cwd(),
+      encoding: "utf-8",
+      timeout: 10000,
+    });
+    assert(help.includes("--from"), "learn --help: documents --from");
+  } catch (e) {
+    assert(false, "learn --help works", String(e));
+  }
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -894,6 +1007,7 @@ async function main(): Promise<void> {
   await phase5_regression();
   await phase6_falsePositives();
   await phase7_cli();
+  await phase7b_newCommands();
   await phase8_liveQwen();
 
   console.log(`\n${"═".repeat(50)}`);

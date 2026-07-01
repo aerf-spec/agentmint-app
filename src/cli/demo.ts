@@ -337,7 +337,7 @@ export async function runDemo(scenarioArg?: string): Promise<void> {
   console.log(`    ${dim("$")} agentmint init`);
   console.log(`    ${dim("$")} agentmint watch`);
   console.log("");
-  console.log(`  ${dim(`${brand()} v0.1.0`)}`);
+  console.log(`  ${dim(`${brand()} v0.2.0`)}`);
   console.log("");
 }
 

@@ -166,6 +166,20 @@ describe("blocked_values validation", () => {
     const s = createSession();
     expect(validateInputCrossRefs("git_push", { branch: "feature/x" }, spec, s)).toHaveLength(0);
   });
+
+  it("supports glob patterns in blocked_values", () => {
+    const globSpec = specWith({
+      send_email: {
+        input: { properties: { to: { blocked_values: ["*@competitor.com"], action: "block" } } },
+      },
+    });
+    const s = createSession();
+    const hit = validateInputCrossRefs("send_email", { to: "ceo@competitor.com" }, globSpec, s);
+    expect(hit).toHaveLength(1);
+    expect(hit[0]!.type).toBe("blocked_value");
+    const miss = validateInputCrossRefs("send_email", { to: "ceo@partner.com" }, globSpec, s);
+    expect(miss).toHaveLength(0);
+  });
 });
 
 describe("checkRequires", () => {

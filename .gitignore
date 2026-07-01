@@ -8,3 +8,4 @@ coverage/
 .env.*
 !.env.example
 .npm
+.DS_Store

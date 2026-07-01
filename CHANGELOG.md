@@ -1,5 +1,20 @@
 # CHANGELOG.md
 
+## 0.2.0
+
+- **Fix:** a bare `action: block` / `action: warn` on a tool with no concrete
+  rules now blocks/warns the tool unconditionally instead of being a no-op.
+- **Fix:** `blocked_patterns` (and `blocked_values`) now support glob matching —
+  `*@competitor.com` matches `ceo@competitor.com`, while plain substrings stay
+  backward compatible.
+- **New:** `agentmint test --suite <prior-auth|coding-agent|refund-agent>` runs
+  pre-built behavioural suites (28 scenarios) with `--json` and `--list`.
+- **New:** `agentmint learn --from <path>` infers a spec from past violation
+  receipts, with `--out` and `--merge`.
+- Package renamed to `@npmsai/agentmint`; zero runtime dependencies.
+
+---
+
 ## 1. Current state of `src/` and `test/`
 
 There is no `test/` directory in the repository right now. All tests live in `src/**/*.test.ts`.

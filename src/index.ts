@@ -8,6 +8,9 @@ export { AgentMintReport } from "./report.js";
 export { buildRecord } from "./receipt.js";
 export { MerkleTree, canonicalize } from "./merkle.js";
 export { formatJSONL, parseJSONL, eventToJSONL } from "./jsonl.js";
+export { runSuite, classify } from "./test-runner.js";
+export type { Scenario, ScenarioResult, SuiteResult } from "./test-runner.js";
+export { inferSpec, serializeSpec, mergeSpecs } from "./learn.js";
 export type {
   AgentMintConfig,
   AgentMintSpec,
