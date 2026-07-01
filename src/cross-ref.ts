@@ -85,17 +85,23 @@ export function validateInputCrossRefs(
       }
     }
 
-    // blocked_values: exact match
+    // blocked_values: exact match, with glob support when a value contains `*`
     if (propConfig.blocked_values && value !== undefined) {
       const strValue = String(value);
-      if (propConfig.blocked_values.includes(strValue)) {
-        violations.push({
-          type: "blocked_value",
-          tool,
-          field,
-          details: `${field} has blocked value "${strValue}"`,
-          action,
-        });
+      for (const blocked of propConfig.blocked_values) {
+        const hit = blocked.includes("*")
+          ? matchPattern(strValue, blocked)
+          : strValue === blocked;
+        if (hit) {
+          violations.push({
+            type: "blocked_value",
+            tool,
+            field,
+            details: `${field} has blocked value "${strValue}"`,
+            action,
+          });
+          break;
+        }
       }
     }
   }

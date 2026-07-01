@@ -1,193 +1,78 @@
 # AgentMint
 
-Runtime guardrails for AI agents. Validation · Circuit breakers · Audit receipts.
-
-Zero runtime dependencies. One YAML spec. One line of code.
-
-## Try it now
-
-```
-npx @npmsai/agentmint demo a
-```
-
-Three rogue agent scenarios in 10 seconds, no API keys.
-
-## The problem
-
-Your AI agent calls a tool, gets a 200 back, and keeps going — even when the data is wrong. It refunds the wrong customer. It overwrites a file it never read. It retries 15 times with identical args, burning tokens. Nobody catches it until production breaks.
-
-## What AgentMint does
-
-AgentMint sits at the tool boundary and catches three things:
-
-**Validation** — Cross-ref tool outputs against inputs. Did the refund match the order that was looked up? Is the amount within the order total? Was the prerequisite step completed first?
-
-**Circuit breakers** — Stop runaway loops (identical-arg detection), velocity spikes (too many calls too fast), and cost overruns before they burn money.
-
-**Audit receipts** — JSONL stream of every tool call, every violation, every enforcement decision. Queryable with grep/jq. Deterministic, no LLM judge needed.
-
-## Install
-
-```
-npm install @npmsai/agentmint
-```
+Tool-call enforcement for AI agents. One YAML spec defines what's allowed.
+One line instruments your tools. Every decision logged.
 
 ## Quick start
 
-```typescript
-import { harden } from 'agentmint'
+npx @npmsai/agentmint demo a
 
-// Wrap your tools — one line
-const tools = harden(myTools, {
-  spec: loadSpec('./agentmint.spec.yaml'),
-})
+## Install
 
-// Use tools exactly as before. The agent doesn't know they're wrapped.
-const result = await agent.run(task, { tools })
-```
+npm install @npmsai/agentmint
 
-## Spec file
+## Instrument your agent (one line)
 
-```yaml
-# agentmint.spec.yaml
+import { harden } from "@npmsai/agentmint";
+const tools = harden(myTools);
+
+## Add a spec
+
+import { harden, loadSpec } from "@npmsai/agentmint";
+const spec = loadSpec(`
 version: "1.0"
-
 tools:
   issue_refund:
-    requires:
-      - lookup_order
+    requires: [lookup_order]
     input:
       properties:
         amount:
           max_ref: lookup_order.output.total
-        order_id:
-          cross_ref: lookup_order.input.order_id
-
-  run_command:
-    input:
-      properties:
-        command:
-          blocked_patterns:
-            - "rm -rf"
-            - "DROP TABLE"
-          action: block
-
-  git_push:
-    input:
-      properties:
-        branch:
-          blocked_values: ["main", "master"]
-          action: block
-
+  delete_account:
+    action: block
 breakers:
   loop:
-    max_identical_calls: 5
-    action: block
-  velocity:
-    max_calls_per_window: 15
-    window_seconds: 30
-    action: block
-```
+    max_identical_calls: 3
+`);
+const tools = harden(myTools, { spec });
+
+## Test your agent
+
+npx @npmsai/agentmint test --suite prior-auth
+npx @npmsai/agentmint test --suite coding-agent
+npx @npmsai/agentmint test --suite refund-agent
+
+## Learn from failures
+
+npx @npmsai/agentmint learn --from receipts/incident.jsonl
 
 ## CLI
 
-| Command | What it does |
-|---------|-------------|
-| `agentmint demo [1\|2\|3\|a]` | Run demo scenarios showing all three capabilities |
-| `agentmint init [--example refund\|coding\|data]` | Generate a starter spec |
-| `agentmint watch` | Real-time validation against your spec |
-| `agentmint ci` | Validate and exit 0/1 for CI gating |
-| `agentmint diff <run1> <run2>` | Compare behavior between two runs |
+agentmint demo [1|2|3|a]    Run demo scenarios
+agentmint test --suite <n>  Run pre-built test suite
+agentmint learn --from <f>  Generate spec from failures
+agentmint watch             Watch agent in real time
+agentmint init              Generate starter spec
+agentmint ci                Gate CI on violations
+agentmint diff              Compare two receipt files
 
-## What it catches
+## Spec reference
 
-| Violation | Example | Default action |
-|-----------|---------|---------------|
-| `requires` | Refund without prior order lookup | `block` |
-| `cross_ref` | Refund order_id ≠ looked-up order_id | `warn` |
-| `max_ref` | Refund amount > order total | `warn` |
-| `blocked_pattern` | Command contains "rm -rf" | `block` |
-| `blocked_value` | Push to "main" branch | `block` |
-| `loop_breaker` | 5 identical calls (same tool + args) | `block` |
-| `velocity_breaker` | 15 calls in 30 seconds | `block` |
-| `cost_breaker` | Total cost exceeds $10 | `block` |
+- requires: [tool_a, tool_b] — tool_a and tool_b must run first
+- action: block | warn — block prevents execution, warn logs and continues
+- input.properties.<prop>.cross_ref — validate against prior tool output
+- input.properties.<prop>.max_ref — enforce value ceiling from prior output
+- input.properties.<prop>.blocked_patterns — glob patterns to reject
+- input.properties.<prop>.blocked_values — exact values to reject
+- breakers.loop.max_identical_calls — halt after N identical calls
+- breakers.velocity.max_calls_per_window — halt after N calls in window
+- bind: { key: value } — lock a parameter across all tools
+- deny: ["pattern*"] — block tools matching glob pattern
+- checkpoint: ["tool"] — require approval before execution
 
-## Severity model
+## Adapters
 
-Two actions: `warn` (log + continue) and `block` (reject the call). Configurable per-rule with smart defaults — validation rules default to `warn`, breakers and blocked patterns default to `block`. The existing `checkpoint` mechanism provides human-in-the-loop approval for sensitive operations.
+Works with OpenAI SDK, Anthropic SDK, Vercel AI SDK, LangChain,
+or any plain object of async functions.
 
-## Works with
-
-Auto-detected. No framework config needed.
-
-```typescript
-// OpenAI SDK
-const tools = harden(openaiTools)
-
-// Anthropic SDK
-const tools = harden(anthropicTools)
-
-// Vercel AI SDK
-const tools = harden(vercelTools)
-
-// LangChain
-const tools = harden(langchainTools)
-
-// Any function
-const tools = harden({ myTool: async (params) => { ... } })
-
-// Framework-agnostic single tool
-import { watchTool } from 'agentmint'
-const safeTool = watchTool('myTool', myFn, enforcer)
-```
-
-## Programmatic config
-
-Works without a spec file — configure in code:
-
-```typescript
-const tools = harden(myTools, {
-  bind: { customer_id: 'CUST-123' },
-  deny: ['delete_*'],
-  checkpoint: ['send_email'],
-  budget: 5.00,
-  timeout: 60,
-  retryLimit: 3,
-  mode: 'shadow',  // log violations without blocking
-  onCheckpoint: async (tool, params) => getApproval(tool, params),
-  costEstimator: (tool, params, result) => 0.01,
-})
-```
-
-## API
-
-```typescript
-import {
-  harden,
-  loadSpec,
-  watchTool,
-  AgentMintReport,
-  buildRecord,
-  formatJSONL,
-  parseJSONL,
-} from 'agentmint'
-```
-
-After wrapping:
-- `tools.__state()` — current RunState
-- `tools.__receipt()` — formatted terminal receipt
-- `tools.__log()` — event array
-
-Non-enumerable — won't break framework tool iteration.
-
-## Zero dependencies
-
-```
-npm audit  # clean
-```
-
-No transitive dependencies. No supply chain risk. One package.
-
-## License
-
-MIT
+## Zero runtime dependencies. MIT license.

@@ -47,7 +47,7 @@ echo ""
 
 # 9. Confirm
 echo "══════════════════════════════════"
-echo "  Ready to publish agentmint@0.1.0"
+echo "  Ready to publish @npmsai/agentmint@0.2.0"
 echo "══════════════════════════════════"
 echo ""
 read -p "  Publish to npm? (y/n) " -n 1 -r
@@ -56,7 +56,7 @@ echo ""
 if [[ $REPLY =~ ^[Yy]$ ]]; then
   npm publish
   echo ""
-  echo "  ✓ Published! Test with: npx agentmint demo a"
+  echo "  ✓ Published! Test with: npx @npmsai/agentmint demo a"
   echo ""
 else
   echo "  Aborted."

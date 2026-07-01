@@ -1,7 +1,7 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { dim, fg, green, muted, yellow } from "./color.js";
 
-const STARTER_SPEC = `# AgentMint Spec — https://github.com/agentmint/agentmint
+const STARTER_SPEC = `# AgentMint Spec — https://github.com/aerf-spec/agentmint-app
 # Validation rules for your AI agent's tool calls.
 #
 # Quick start:

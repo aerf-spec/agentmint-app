@@ -1,6 +1,6 @@
 {
-  "name": "@aerf-spec/agentmint-app",
-  "version": "0.1.2",
+  "name": "@npmsai/agentmint",
+  "version": "0.2.0",
   "description": "Runtime guardrails for AI agents. Validation · Circuit breakers · Audit receipts.",
   "type": "module",
   "license": "MIT",
@@ -34,7 +34,8 @@
   },
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "build": "tsup",
@@ -45,14 +46,13 @@
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
+    "openai": "^6.45.0",
     "tsup": "^8.0.0",
     "tsx": "^4.19.0",
     "typescript": "^5.7.0",
     "vitest": "^3.2.0"
   },
-  "dependencies": {
-    "openai": "^6.45.0"
-  },
+  "dependencies": {},
   "repository": {
     "type": "git",
     "url": "https://github.com/aerf-spec/agentmint-app.git"
