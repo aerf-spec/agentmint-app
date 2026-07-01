@@ -4,7 +4,7 @@ import type {
   EventResult,
   RunState,
 } from "./types.js";
-import { guardrailsActive, resolveBudget } from "./budget.js";
+import { guardrailsActive, resolveBudget } from "./kernel/budget.js";
 
 const ICONS: Record<EventResult, string> = {
   allowed: "✓",

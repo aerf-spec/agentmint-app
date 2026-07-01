@@ -1,51 +1,29 @@
-export { harden } from "./harden.js";
-export { runBench, formatBenchMarkdown, formatBenchTable } from "./bench.js";
-export { loadSpec, loadSpecFromFile, parseYaml } from "./spec.js";
-export { createSession, recordInput, recordOutput, resolveRef } from "./session.js";
-export { validateInputCrossRefs, validateOutputCrossRefs, checkRequires } from "./cross-ref.js";
-export { checkBreakers } from "./breakers.js";
-export {
-  checkBudgetGuardrails,
-  estimateCallCost,
-  staticEstimate,
-  resolveCostCap,
-  resolveUsageCap,
-  resolveBudget,
-  guardrailsActive,
-  validateGuardrails,
-} from "./budget.js";
-export type { BudgetDecision } from "./budget.js";
-export { watchTool } from "./adapters/generic.js";
-export { AgentMintReport } from "./report.js";
-export { buildRecord } from "./receipt.js";
-export { MerkleTree, canonicalize } from "./merkle.js";
-export { formatJSONL, parseJSONL, eventToJSONL } from "./jsonl.js";
-export { runSuite, classify } from "./test-runner.js";
-export type { Scenario, ScenarioResult, SuiteResult } from "./test-runner.js";
-export { inferSpec, serializeSpec, mergeSpecs } from "./learn.js";
-export { gate, gateChainTip } from "./gate.js";
-export type { GateOptions, GateResult } from "./gate.js";
-export { verify, formatVerifyReceipt } from "./verify.js";
-export type { VerifyInput, VerifyReceipt, VerifyClaim } from "./verify.js";
-export type {
-  AgentMintConfig,
-  AgentMintSpec,
-  SpecToolConfig,
-  SpecPropertyConfig,
-  SpecBreakerConfig,
-  SpecCostConfig,
-  SpecLimitsConfig,
-  RuleAction,
-  RunState,
-  SessionStore,
-  Violation,
-  Event,
-  EventResult,
-  BlockResponse,
-  AERFRecord,
-  JSONLEvent,
-  ReportOptions,
-  EnforcerFn,
-  MerkleProof,
-} from "./types.js";
-export type { BenchReport, BenchResult } from "./bench.js";
+// AgentMint SDK — cryptographic receipts for agent actions.
+//
+// This is the public surface. It exposes only the wedge: wrap an agent action,
+// get a signed receipt, verify it later. Optional guardrails (budget, learning,
+// enforcement, adapters) live in ./experimental and are not exported here.
+
+// receipt — build a signed, tamper-evident record of an agent action
+export * from "./receipt.js";
+
+// verify — check a receipt or a chain of receipts against its claims
+export * from "./verify.js";
+
+// gate — pre-flight approval check before an action runs
+export * from "./gate.js";
+
+// session — group receipts into an auditable, ordered session
+export * from "./session.js";
+
+// log — build run state and emit block/violation events
+export * from "./log.js";
+
+// merkle — hashing + Merkle tree used to chain and prove receipts
+export * from "./merkle.js";
+
+// jsonl — serialize/parse receipts as append-only JSONL evidence
+export * from "./jsonl.js";
+
+// types — shared type definitions for the SDK surface
+export * from "./types.js";

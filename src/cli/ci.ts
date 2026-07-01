@@ -1,5 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
-import { loadSpec } from "../spec.js";
+import { loadSpec } from "../kernel/spec.js";
 import { parseJSONL } from "../jsonl.js";
 import type { JSONLEvent } from "../types.js";
 import { brand, dim, fg, green, muted, red, yellow } from "./color.js";
@@ -26,7 +26,7 @@ export async function runCi(): Promise<void> {
     events = parseJSONL(content);
   } else {
     // Run built-in validation scenario
-    const { harden } = await import("../harden.js");
+    const { harden } = await import("../experimental/harden.js");
     const spec = loadSpec(readFileSync(specPath, "utf-8"));
 
     const mockTools: Record<string, (p: Record<string, unknown>) => Promise<unknown>> = {

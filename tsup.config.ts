@@ -3,8 +3,6 @@ import { defineConfig } from "tsup";
 export default defineConfig({
   entry: [
     "src/index.ts",
-    "src/bench.ts",
-    "src/cli/bench.ts",
     "src/cli/entry.ts",
     "src/cli/verify.ts",
     "src/cli/demo.ts",
@@ -16,9 +14,9 @@ export default defineConfig({
     "src/cli/init.ts",
     "src/cli/ci.ts",
     "src/cli/diff.ts",
-    "src/suites/prior-auth.ts",
-    "src/suites/coding-agent.ts",
-    "src/suites/refund-agent.ts",
+    "src/experimental/suites/prior-auth.ts",
+    "src/experimental/suites/coding-agent.ts",
+    "src/experimental/suites/refund-agent.ts",
   ],
   format: ["esm", "cjs"],
   dts: true,

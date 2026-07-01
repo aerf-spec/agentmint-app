@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import { Readable } from "node:stream";
 import { PassThrough } from "node:stream";
 import { gate } from "./gate.js";
-import { harden } from "./harden.js";
-import { loadSpec } from "./spec.js";
+import { harden } from "./experimental/harden.js";
+import { loadSpec } from "./kernel/spec.js";
 import type { RunState } from "./types.js";
 
 /** A readable stream that yields `line` then ends. */

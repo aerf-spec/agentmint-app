@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
-import { harden } from "../harden.js";
-import { loadSpec } from "../spec.js";
+import { harden } from "../experimental/harden.js";
+import { loadSpec } from "../kernel/spec.js";
 import type { AgentMintConfig, RunState } from "../types.js";
 import { blue, bold, brand, dim, fg, green, icons, muted, red, yellow } from "./color.js";
 

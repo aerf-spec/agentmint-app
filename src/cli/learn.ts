@@ -1,8 +1,8 @@
 import { readFileSync, writeFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { parseJSONL } from "../jsonl.js";
-import { loadSpec } from "../spec.js";
-import { inferSpec, mergeSpecs, serializeSpec } from "../learn.js";
+import { loadSpec } from "../kernel/spec.js";
+import { inferSpec, mergeSpecs, serializeSpec } from "../experimental/learn.js";
 import type { JSONLEvent } from "../types.js";
 import { brand, dim, fg, green, muted, red } from "./color.js";
 

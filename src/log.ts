@@ -6,7 +6,7 @@ import type {
   EventResult,
   RunState,
 } from "./types.js";
-import { redact } from "./redact.js";
+import { redact } from "./kernel/redact.js";
 import { createSession } from "./session.js";
 import { MerkleTree, canonicalize } from "./merkle.js";
 
