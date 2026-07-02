@@ -218,10 +218,13 @@ describe("generateTestFile", () => {
     });
     writeFileSync(testFile, content, "utf-8");
 
-    const vitestBin = fileURLToPath(new URL("../../node_modules/.bin/vitest", import.meta.url));
+    const repoRoot = fileURLToPath(new URL("../../", import.meta.url));
     let status = 0;
     try {
-      execFileSync(vitestBin, ["run", "--root", dir, testFile], { stdio: "pipe" });
+      execFileSync("npx", ["vitest", "run", "--root", dir, testFile], {
+        cwd: repoRoot,
+        stdio: "pipe",
+      });
     } catch (err) {
       status = (err as { status?: number }).status ?? 1;
       const e = err as { stdout?: Buffer; stderr?: Buffer };
