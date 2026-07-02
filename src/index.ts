@@ -18,6 +18,10 @@ export * from "./receipt.js";
 // receipt-decision — signed, hash-chained receipts for individual decisions
 export * from "./receipt-decision.js";
 
+// receipt-aerf — full AERF evidence receipts (wire-format parity with the
+// Python producer and Go verifier)
+export * from "./receipt-aerf.js";
+
 // verify — check a receipt or a chain of receipts against its claims
 export * from "./verify.js";
 

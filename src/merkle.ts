@@ -5,6 +5,54 @@ function sha256(data: string | Uint8Array): string {
   return createHash("sha256").update(data).digest("hex");
 }
 
+// ── RFC 6962 primitives (domain-separated hashing) ──────────────────
+// These mirror the Go reference verifier's LogLeafHash / hashInternal /
+// walkAuditPath exactly. Domain separation (0x00 leaf / 0x01 interior)
+// prevents an interior node from being presented as a leaf.
+
+/** RFC 6962 leaf hash: SHA-256(0x00 || data), lowercase hex. */
+export function logLeafHash(data: Uint8Array | string): string {
+  const bytes = typeof data === "string" ? Buffer.from(data, "utf-8") : data;
+  return createHash("sha256").update(Buffer.from([0x00])).update(bytes).digest("hex");
+}
+
+/** RFC 6962 interior hash: SHA-256(0x01 || left || right), hex in/out. */
+export function hashInternal(leftHex: string, rightHex: string): string {
+  return createHash("sha256")
+    .update(Buffer.from([0x01]))
+    .update(Buffer.from(leftHex, "hex"))
+    .update(Buffer.from(rightHex, "hex"))
+    .digest("hex");
+}
+
+/**
+ * Recompute the root from a leaf hash and an RFC 6962 audit path (hex in,
+ * hex out), mirroring the Go verifier's walkAuditPath: the sibling sits left
+ * of the current node when the current index is odd; the last node at an
+ * odd-sized level is promoted without combining.
+ */
+export function walkAuditPath(
+  leafHashHex: string,
+  pathHex: readonly string[],
+  leafIndex: number,
+  treeSize: number,
+): string {
+  let node = leafHashHex;
+  let idx = leafIndex;
+  let last = treeSize - 1;
+  for (const sibling of pathHex) {
+    if (idx === last && idx % 2 === 0) {
+      idx = Math.floor(idx / 2);
+      last = Math.floor(last / 2);
+      continue;
+    }
+    node = idx % 2 === 1 ? hashInternal(sibling, node) : hashInternal(node, sibling);
+    idx = Math.floor(idx / 2);
+    last = Math.floor(last / 2);
+  }
+  return node;
+}
+
 interface RawNumberLexeme {
   readonly __raw_number_lexeme: true;
   readonly value: string;

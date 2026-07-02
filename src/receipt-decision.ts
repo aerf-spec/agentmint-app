@@ -100,6 +100,10 @@ export function buildDecisionReceipt(event: Event, ctx: DecisionContext): Decisi
     observed_at: event.timestamp,
     key_id: ctx.keyId,
     ...(ctx.previousHash !== undefined ? { previous_receipt_hash: ctx.previousHash } : {}),
+    // Structured rule firings — signed, so a receipt proves WHICH rule denied.
+    ...(event.violations && event.violations.length > 0
+      ? { violations: event.violations.map((v) => ({ ...v })) }
+      : {}),
     // signature filled in below
     signature: "",
   };

@@ -30,14 +30,24 @@ function handleViolation(
 ): { shouldBlock: boolean; response?: ReturnType<typeof blockResponse> } {
   if (v.action === "block") {
     state.blockedCount++;
-    logEvent(state, v.tool, params, "blocked", { reason: v.type, details: v.details, ...extra });
+    logEvent(state, v.tool, params, "blocked", {
+      reason: v.type,
+      details: v.details,
+      violations: [v],
+      ...extra,
+    });
     config.onBlock?.(v.tool, v.type, v.details);
     const resp = blockResponse(v.tool, v.details);
     return { shouldBlock: !shadow, response: resp };
   }
   // warn
   state.warnedCount++;
-  logEvent(state, v.tool, params, "warned", { reason: v.type, details: v.details, ...extra });
+  logEvent(state, v.tool, params, "warned", {
+    reason: v.type,
+    details: v.details,
+    violations: [v],
+    ...extra,
+  });
   config.onWarn?.(v.tool, v.type, v.details);
   return { shouldBlock: false };
 }
@@ -161,7 +171,21 @@ export async function enforce(
       if (params[field] !== undefined && params[field] !== expected) {
         const details = `${field}: expected "${expected}", got "${String(params[field])}"`;
         state.blockedCount++;
-        logEvent(state, tool, params, "blocked", { reason: "bind_violation", details });
+        logEvent(state, tool, params, "blocked", {
+          reason: "bind_violation",
+          details,
+          violations: [
+            {
+              type: "bind_violation",
+              tool,
+              field,
+              expected,
+              actual: String(params[field]),
+              details,
+              action: "block",
+            },
+          ],
+        });
         config.onBlock?.(tool, "bind_violation", details);
         const blocked = blockResponse(
           tool,
@@ -180,7 +204,12 @@ export async function enforce(
   if (config.deny && matchesAny(tool, config.deny)) {
     check("deny list?", false, "yes");
     state.blockedCount++;
-    logEvent(state, tool, params, "blocked", { reason: "denied" });
+    logEvent(state, tool, params, "blocked", {
+      reason: "denied",
+      violations: [
+        { type: "denied", tool, details: `${tool} is on the deny list`, action: "block" },
+      ],
+    });
     config.onBlock?.(tool, "denied");
     const blocked = blockResponse(tool, `${tool} is not available.`);
     if (!shadow) {
@@ -195,7 +224,12 @@ export async function enforce(
     check("allow list?", inScope, inScope ? "yes" : "no");
     if (!inScope) {
       state.blockedCount++;
-      logEvent(state, tool, params, "blocked", { reason: "not_in_scope" });
+      logEvent(state, tool, params, "blocked", {
+        reason: "not_in_scope",
+        violations: [
+          { type: "not_in_scope", tool, details: `${tool} not in allow list`, action: "block" },
+        ],
+      });
       config.onBlock?.(tool, "not_in_scope");
       const blocked = blockResponse(tool, `${tool} is not available.`);
       if (!shadow) {
@@ -221,7 +255,17 @@ export async function enforce(
     if (bareAction) {
       if (toolSpec!.action === "block") {
         state.blockedCount++;
-        logEvent(state, tool, params, "blocked", { reason: "action_block" });
+        logEvent(state, tool, params, "blocked", {
+          reason: "action_block",
+          violations: [
+            {
+              type: "action_block",
+              tool,
+              details: `${tool} is blocked by the spec (action: block)`,
+              action: "block",
+            },
+          ],
+        });
         config.onBlock?.(tool, "action_block");
         const blocked = blockResponse(
           tool,
@@ -233,7 +277,17 @@ export async function enforce(
         }
       } else {
         state.warnedCount++;
-        logEvent(state, tool, params, "warned", { reason: "action_warn" });
+        logEvent(state, tool, params, "warned", {
+          reason: "action_warn",
+          violations: [
+            {
+              type: "action_block",
+              tool,
+              details: `${tool} is flagged by the spec (action: warn)`,
+              action: "warn",
+            },
+          ],
+        });
         config.onWarn?.(tool, "action_warn");
       }
     }
@@ -274,6 +328,15 @@ export async function enforce(
         logEvent(state, tool, params, "blocked", {
           reason: "prerequisite_missing",
           details: `"${req}" must be completed first`,
+          violations: [
+            {
+              type: "requires",
+              tool,
+              expected: req,
+              details: `"${req}" must be completed first`,
+              action: "block",
+            },
+          ],
         });
         config.onBlock?.(tool, "prerequisite_missing", req);
         const blocked = blockResponse(
@@ -427,7 +490,11 @@ export async function enforce(
     for (const v of outputViolations) {
       // Output violations can only warn (tool already executed)
       state.warnedCount++;
-      logEvent(state, tool, params, "warned", { reason: v.type, details: v.details });
+      logEvent(state, tool, params, "warned", {
+        reason: v.type,
+        details: v.details,
+        violations: [v],
+      });
       config.onWarn?.(tool, v.type, v.details);
     }
   }

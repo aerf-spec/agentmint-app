@@ -4,6 +4,7 @@ import type {
   BlockResponse,
   Event,
   EventResult,
+  ReceiptViolation,
   RunState,
 } from "./types.js";
 import { redact } from "./kernel/redact.js";
@@ -65,6 +66,7 @@ export function logEvent(
     estimate?: number;
     cumulative?: number;
     callIndex?: number;
+    violations?: ReadonlyArray<ReceiptViolation>;
   },
 ): Event {
   const redacted = redact(params, Object.keys(state.boundValues));
@@ -82,6 +84,8 @@ export function logEvent(
     ...(opts?.estimate !== undefined && { estimate: opts.estimate }),
     ...(opts?.cumulative !== undefined && { cumulative: opts.cumulative }),
     ...(opts?.callIndex !== undefined && { callIndex: opts.callIndex }),
+    ...(opts?.violations !== undefined &&
+      opts.violations.length > 0 && { violations: opts.violations.map((v) => ({ ...v })) }),
   };
   state.events.push(event);
   // Append a tamper-evident leaf to the Merkle evidence chain when enabled

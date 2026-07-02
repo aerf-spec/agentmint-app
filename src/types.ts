@@ -137,6 +137,22 @@ export interface Violation {
   action: RuleAction;
 }
 
+/**
+ * A rule firing recorded ON the event/receipt itself — structured, not a
+ * details string. Covers every engine rule type: the spec/breaker rules
+ * ({@link Violation}) plus the config-level denials that never construct a
+ * Violation object (bind, action_block, deny/allow lists).
+ */
+export interface ReceiptViolation {
+  type: Violation["type"] | "bind_violation" | "action_block" | "denied" | "not_in_scope";
+  tool: string;
+  field?: string;
+  expected?: string;
+  actual?: string;
+  details: string;
+  action: RuleAction;
+}
+
 // ── Config ─────────────────────────────────────────────────────────
 
 /** What the developer passes to harden() */
@@ -246,6 +262,8 @@ export interface Event {
   readonly cumulative?: number;
   /** 1-based index of this call among calls to the same tool this run. */
   readonly callIndex?: number;
+  /** Structured rule firings behind a non-allowed result (never a bare string). */
+  readonly violations?: ReadonlyArray<ReceiptViolation>;
 }
 
 // ── Block Response ─────────────────────────────────────────────────
@@ -334,6 +352,8 @@ export interface DecisionReceipt {
   key_id: string;
   /** SHA-256 hex of the previous receipt's canonical bytes (incl. its signature). Omitted on genesis. */
   previous_receipt_hash?: string;
+  /** Structured rule firings behind this decision. Part of the signed payload. */
+  violations?: ReceiptViolation[];
   /** Ed25519 signature, lowercase hex, over the canonical stripped receipt. */
   signature: string;
 }
@@ -431,6 +451,8 @@ export interface JSONLEvent {
   violations?: Array<{
     type: string;
     field?: string;
+    expected?: string;
+    actual?: string;
     details: string;
     action: string;
   }>;

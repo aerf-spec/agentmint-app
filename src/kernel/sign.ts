@@ -72,10 +72,19 @@ export function keyId(pub: KeyObject): string {
 }
 
 /** Strip the five post-issuance fields, returning a shallow copy. */
-function stripPostIssuance(obj: Record<string, unknown>): Record<string, unknown> {
+export function stripPostIssuance(obj: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = { ...obj };
   for (const f of POST_ISSUANCE_FIELDS) delete out[f];
   return out;
+}
+
+/**
+ * The canonical bytes covered by the issuer signature and the parent
+ * counter-signature: the receipt minus the post-issuance fields, canonicalized.
+ * Also the §8.4 chain-hash input and the §15 log leaf preimage.
+ */
+export function signedPayloadBytes(obj: Record<string, unknown>): Buffer {
+  return canonicalBytes(stripPostIssuance(obj));
 }
 
 /**
