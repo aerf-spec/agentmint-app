@@ -489,6 +489,32 @@ function checkLogInclusion(receipt: Record<string, unknown>, opts: AerfVerifyOpt
   return { outcome: "passed" };
 }
 
+/**
+ * SHA-256 hex of the canonical JSON of the input context the agent observed
+ * (SPEC §4.6). Per §5.1 rule 2, every numeric value inside the hashed context
+ * is encoded as a JSON string, sidestepping number-representation ambiguity.
+ */
+export function contextHashSha256(context: unknown): string {
+  return sha256Hex(canonicalBytes(numbersAsStrings(context)));
+}
+
+function numbersAsStrings(value: unknown): unknown {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new AerfReceiptError("context contains a non-finite number");
+    return String(value);
+  }
+  if (typeof value === "object" && value !== null && "__raw_number_lexeme" in value) {
+    return (value as unknown as { value: string }).value;
+  }
+  if (Array.isArray(value)) return value.map(numbersAsStrings);
+  if (typeof value === "object" && value !== null) {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) out[k] = numbersAsStrings(v);
+    return out;
+  }
+  return value;
+}
+
 /** The canonical PDP-bound tuple (SPEC §4.6/§17): exactly these three keys. */
 export function pdpTuple(
   contextHashSha256: string,
