@@ -40,6 +40,7 @@
     "demo": "tsx src/cli/demo.ts",
     "demo:tamper": "tsx examples/demos/tamper.ts",
     "demo:silence": "tsx examples/demos/silence.ts",
+    "demo:trace": "tsx examples/demos/trace.ts",
     "benchmark:dry": "cd examples/lm-studio-benchmark && npx tsx run.ts --dry-run && npx tsx analysis/compare.ts --markdown",
     "benchmark:full": "cd examples/lm-studio-benchmark && npm run full"
   },
