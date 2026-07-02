@@ -22,7 +22,7 @@ describe("canonicalize", () => {
   });
 
   it("throws on undefined", () => {
-    expect(() => canonicalize({ x: undefined })).toThrow("Unsupported value");
+    expect(() => canonicalize(undefined)).toThrow("Unsupported value");
   });
 });
 

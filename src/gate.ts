@@ -44,11 +44,6 @@ function chainHash(payload: unknown): string {
   return hash;
 }
 
-/** The current tip of the gate hash chain (empty string if no gates yet). */
-export function gateChainTip(): string {
-  return hashChain[hashChain.length - 1] ?? "";
-}
-
 // ── Console channel ─────────────────────────────────────────────────
 
 function formatCountdown(seconds: number): string {

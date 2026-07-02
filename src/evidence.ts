@@ -120,24 +120,6 @@ export class EvidencePackage {
   }
 }
 
-/** Verify a receipt_index-style summary offline (used by tests and the CLI). */
-export function summarizeEvidence(receipts: readonly AerfReceipt[]): {
-  total: number;
-  inPolicy: number;
-  outOfPolicy: number;
-  chainRoot: string;
-} {
-  const rs = receipts as unknown as Record<string, unknown>[];
-  const chain = verifyAerfChain(rs);
-  const inPolicy = receipts.filter((r) => r.in_policy).length;
-  return {
-    total: receipts.length,
-    inPolicy,
-    outOfPolicy: receipts.length - inPolicy,
-    chainRoot: chain.rootHash,
-  };
-}
-
 // ── Standalone verifier, shipped inside every package ───────────────
 // Mirrors the oracle's semantics (test/aerf-verify-poc.mjs): JCS
 // canonicalization with number lexemes replayed verbatim, post-issuance strip,
