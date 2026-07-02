@@ -134,6 +134,10 @@ export interface Violation {
   field?: string;
   expected?: string;
   actual?: string;
+  /** Rule reference path for cross_ref/max_ref (e.g. "lookup.output.balance"). */
+  ref?: string;
+  /** Velocity-breaker window, so inference never re-parses the details string. */
+  windowSeconds?: number;
   details: string;
   action: RuleAction;
 }
@@ -156,6 +160,8 @@ export interface ReceiptViolation {
   field?: string;
   expected?: string;
   actual?: string;
+  ref?: string;
+  windowSeconds?: number;
   details: string;
   action: RuleAction;
 }

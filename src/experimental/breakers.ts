@@ -41,6 +41,9 @@ export function checkBreakers(
       violations.push({
         type: "velocity_breaker",
         tool,
+        expected: String(breakers.velocity.max_calls_per_window),
+        actual: String(recentCalls),
+        windowSeconds: breakers.velocity.window_seconds,
         details: `${recentCalls} calls in last ${breakers.velocity.window_seconds}s (limit: ${breakers.velocity.max_calls_per_window})`,
         action: breakers.velocity.action ?? "block",
       });
@@ -52,6 +55,8 @@ export function checkBreakers(
     violations.push({
       type: "cost_breaker",
       tool,
+      expected: breakers.cost.max_usd.toFixed(2),
+      actual: totalCost.toFixed(2),
       details: `Total cost $${totalCost.toFixed(2)} exceeds limit $${breakers.cost.max_usd.toFixed(2)}`,
       action: breakers.cost.action ?? "block",
     });

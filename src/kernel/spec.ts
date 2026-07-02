@@ -198,6 +198,17 @@ export function loadSpec(pathOrContent: string): AgentMintSpec {
 
   const raw = parseYaml(content) as Record<string, unknown>;
 
+  // Normalize empty tool configs: `tool:` (null) and `tool: {}` (kept as a
+  // scalar by this parser) both mean "declared with no rules".
+  const tools = raw["tools"];
+  if (tools && typeof tools === "object" && !Array.isArray(tools)) {
+    for (const [name, cfg] of Object.entries(tools as Record<string, unknown>)) {
+      if (cfg === null || typeof cfg !== "object") {
+        (tools as Record<string, unknown>)[name] = {};
+      }
+    }
+  }
+
   if (!raw["version"]) {
     throw new Error(
       'agentmint spec: expected a top-level "version" field, but none was found. ' +

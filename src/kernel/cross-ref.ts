@@ -53,6 +53,7 @@ export function validateInputCrossRefs(
           field,
           expected: String(ref.value),
           actual: String(value),
+          ref: propConfig.cross_ref,
           details: `${field}: expected "${String(ref.value)}" (from ${propConfig.cross_ref}), got "${String(value)}"`,
           action,
         });
@@ -69,6 +70,7 @@ export function validateInputCrossRefs(
           field,
           expected: String(ref.value),
           actual: String(value),
+          ref: propConfig.max_ref,
           details: `${field}: ${value} exceeds max ${ref.value} (from ${propConfig.max_ref})`,
           action,
         });
@@ -83,6 +85,8 @@ export function validateInputCrossRefs(
             type: "blocked_pattern",
             tool,
             field,
+            expected: pattern,
+            actual: value,
             details: `${field} contains blocked pattern "${pattern}"`,
             action,
           });
@@ -103,6 +107,8 @@ export function validateInputCrossRefs(
             type: "blocked_value",
             tool,
             field,
+            expected: blocked,
+            actual: strValue,
             details: `${field} has blocked value "${strValue}"`,
             action,
           });
@@ -152,6 +158,7 @@ export function validateOutputCrossRefs(
           field,
           expected: String(ref.value),
           actual: String(value),
+          ref: propConfig.cross_ref,
           details: `output.${field}: expected "${String(ref.value)}" (from ${propConfig.cross_ref}), got "${String(value)}"`,
           action,
         });
@@ -178,6 +185,7 @@ export function checkRequires(
       violations.push({
         type: "requires",
         tool,
+        expected: req,
         details: `"${req}" must be called before "${tool}"`,
         action,
       });

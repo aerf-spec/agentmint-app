@@ -5,8 +5,8 @@
 // infers the policy that would have stopped the misbehavior AND generates a
 // vitest regression suite that replays the incident. We run that suite to prove
 // the holes stay closed.
-import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { execFileSync, spawnSync } from "node:child_process";
+import { readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseJSONL } from "../../src/jsonl.js";
@@ -45,12 +45,41 @@ function main(): void {
   console.log("\n$ npx vitest run /tmp/learned-policy.test.ts\n");
   run("npx", ["vitest", "run", "--root", "/tmp", testPath]);
 
-  // 4. The punchline, computed from the real artifacts.
+  // 4. Policy-diff safety: --check confirms the learned policy still catches
+  //    everything, then catches a deliberately reopened hole with exit 1.
+  console.log("\n$ agentmint learn --from receipts.jsonl --check learned-policy.yaml\n");
+  run("npx", [
+    "tsx",
+    join(repoRoot, "src/cli/entry.ts"),
+    "learn",
+    "--from",
+    receiptsPath,
+    "--check",
+    specPath,
+  ]);
+
+  const holedPath = "/tmp/learned-policy-holed.yaml";
+  const policy = readFileSync(specPath, "utf-8");
+  // "Edit" the policy: drop every learned rule, keeping only the header —
+  // exactly the kind of over-eager cleanup --check exists to catch.
+  writeFileSync(holedPath, policy.split("\n")[0] + "\n");
+  console.log("\n$ agentmint learn --from receipts.jsonl --check learned-policy-holed.yaml  (rules deleted)\n");
+  const check = spawnSync(
+    "npx",
+    ["tsx", join(repoRoot, "src/cli/entry.ts"), "learn", "--from", receiptsPath, "--check", holedPath],
+    { cwd: repoRoot, stdio: "inherit" },
+  );
+  if (check.status === 0) {
+    throw new Error("--check should have failed on the holed policy");
+  }
+  console.log("\n(exit 1 — the edit reopened the holes, CI would block the merge)");
+
+  // 5. The punchline, computed from the real artifacts.
   const events = parseJSONL(readFileSync(receiptsPath, "utf-8"));
   const violations = events.filter(isViolation).length;
   const rules = countRules(inferSpec(events));
   console.log(
-    `\n${violations} violations -> ${rules} rules -> ${violations} regression tests. all passing.`,
+    `\n${violations} violations -> ${rules} rules -> regression tests + a reopened-hole detector. all passing.`,
   );
 }
 

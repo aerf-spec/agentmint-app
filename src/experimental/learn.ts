@@ -21,6 +21,9 @@ type VioType =
   | "loop_breaker"
   | "velocity_breaker"
   | "cost_breaker"
+  | "budget_cap"
+  | "usage_cap"
+  | "cost_cap"
   | "bind_violation"
   | "action_block";
 
@@ -33,6 +36,9 @@ const VIO_TYPES = new Set<string>([
   "loop_breaker",
   "velocity_breaker",
   "cost_breaker",
+  "budget_cap",
+  "usage_cap",
+  "cost_cap",
   "bind_violation",
   "action_block",
 ]);
@@ -49,6 +55,66 @@ interface Descriptor {
   limit?: number;
   windowSeconds?: number;
   maxUsd?: number;
+}
+
+type StructuredViolation = NonNullable<JSONLEvent["violations"]>[number] & {
+  ref?: string;
+  windowSeconds?: number;
+};
+
+/**
+ * Build a descriptor from a STRUCTURED violation — no string parsing. Every
+ * producer-side rule type carries its field/expected/actual/ref data on the
+ * violation itself; the regex path below exists only for legacy corpora
+ * recorded before violations[] existed.
+ */
+function descriptorFromStructured(v: StructuredViolation, tool: string): Descriptor | null {
+  const action: RuleAction = v.action === "warn" ? "warn" : "block";
+  const base = { tool, action } as Descriptor;
+  switch (v.type as VioType) {
+    case "requires":
+      return v.expected ? { ...base, type: "requires", req: v.expected } : null;
+    case "cross_ref":
+      if (!v.field || !v.ref) return null;
+      return { ...base, type: "cross_ref", field: v.field.replace(/^output\./, ""), ref: v.ref };
+    case "max_ref":
+      if (!v.field || !v.ref) return null;
+      return { ...base, type: "max_ref", field: v.field, ref: v.ref };
+    case "blocked_pattern":
+      if (!v.field || v.expected === undefined) return null;
+      return { ...base, type: "blocked_pattern", field: v.field, pattern: v.expected };
+    case "blocked_value":
+      if (!v.field || v.expected === undefined) return null;
+      return { ...base, type: "blocked_value", field: v.field, value: v.expected };
+    case "loop_breaker":
+      return { ...base, type: "loop_breaker", limit: numberOr(v.expected, 3) };
+    case "velocity_breaker":
+      return {
+        ...base,
+        type: "velocity_breaker",
+        limit: numberOr(v.expected, 10),
+        windowSeconds: v.windowSeconds ?? 60,
+      };
+    case "cost_breaker":
+      return { ...base, type: "cost_breaker", maxUsd: numberOr(v.expected, 0) };
+    case "budget_cap":
+      return { ...base, type: "budget_cap", maxUsd: numberOr(v.expected, 0) };
+    case "cost_cap":
+      return { ...base, type: "cost_cap", field: v.field, maxUsd: numberOr(v.expected, 0) };
+    case "usage_cap":
+      return { ...base, type: "usage_cap", limit: numberOr(v.expected, 1) };
+    case "action_block":
+      return { ...base, type: "action_block" };
+    case "bind_violation":
+      return { ...base, type: "bind_violation" };
+    default:
+      return null;
+  }
+}
+
+function numberOr(value: string | undefined, fallback: number): number {
+  const n = value !== undefined ? Number(value) : NaN;
+  return Number.isFinite(n) ? n : fallback;
 }
 
 function actionFromResult(result: string): RuleAction {
@@ -132,8 +198,16 @@ function descriptorsFor(event: JSONLEvent): Descriptor[] {
   if (event.violations && event.violations.length > 0) {
     for (const v of event.violations) {
       if (!VIO_TYPES.has(v.type)) continue;
-      const action: RuleAction = v.action === "warn" ? "warn" : "block";
-      const desc = parseDetails(v.type as VioType, event.tool, action, v.field, v.details);
+      // Structured data first; the details-string parser is the legacy path.
+      const desc =
+        descriptorFromStructured(v as StructuredViolation, event.tool) ??
+        parseDetails(
+          v.type as VioType,
+          event.tool,
+          v.action === "warn" ? "warn" : "block",
+          v.field,
+          v.details,
+        );
       if (desc) out.push(desc);
     }
     return out;
@@ -241,6 +315,21 @@ export function inferSpec(events: JSONLEvent[]): AgentMintSpec {
           spec.breakers.cost = { max_usd: desc.maxUsd ?? 0, action: desc.action };
           break;
         }
+        case "budget_cap": {
+          if (!spec.breakers) spec.breakers = {};
+          spec.breakers.budget = { max_total_usd: desc.maxUsd ?? 0, action: desc.action };
+          break;
+        }
+        case "cost_cap": {
+          const t = ensureTool(spec, desc.tool);
+          t.cost = { ...t.cost, max_cost_usd: desc.maxUsd ?? 0, action: desc.action };
+          break;
+        }
+        case "usage_cap": {
+          const t = ensureTool(spec, desc.tool);
+          t.limits = { max_calls_per_run: desc.limit ?? 1, action: desc.action };
+          break;
+        }
         case "action_block": {
           const t = ensureTool(spec, desc.tool);
           t.action = "block";
@@ -266,6 +355,8 @@ export function countRules(spec: AgentMintSpec): number {
   for (const t of Object.values(spec.tools ?? {})) {
     if (t.action) n++;
     if (t.requires && t.requires.length > 0) n++;
+    if (t.cost?.max_cost_usd !== undefined) n++;
+    if (t.limits?.max_calls_per_run !== undefined) n++;
     n += Object.keys(t.input?.properties ?? {}).length;
     n += Object.keys(t.output?.properties ?? {}).length;
   }
@@ -357,6 +448,17 @@ export function serializeSpec(spec: AgentMintSpec): string {
         lines.push("    requires:");
         for (const r of cfg.requires) lines.push(`      - ${scalar(r)}`);
       }
+      if (cfg.cost && (cfg.cost.max_cost_usd !== undefined || cfg.cost.estimate_usd !== undefined)) {
+        lines.push("    cost:");
+        if (cfg.cost.estimate_usd !== undefined) lines.push(`      estimate_usd: ${cfg.cost.estimate_usd}`);
+        if (cfg.cost.max_cost_usd !== undefined) lines.push(`      max_cost_usd: ${cfg.cost.max_cost_usd}`);
+        if (cfg.cost.action) lines.push(`      action: ${cfg.cost.action}`);
+      }
+      if (cfg.limits?.max_calls_per_run !== undefined) {
+        lines.push("    limits:");
+        lines.push(`      max_calls_per_run: ${cfg.limits.max_calls_per_run}`);
+        if (cfg.limits.action) lines.push(`      action: ${cfg.limits.action}`);
+      }
       serializeProps(lines, "input", cfg.input?.properties);
       serializeProps(lines, "output", cfg.output?.properties);
     }
@@ -380,6 +482,11 @@ export function serializeSpec(spec: AgentMintSpec): string {
       lines.push("  cost:");
       lines.push(`    max_usd: ${b.cost.max_usd}`);
       if (b.cost.action) lines.push(`    action: ${b.cost.action}`);
+    }
+    if (b.budget) {
+      lines.push("  budget:");
+      lines.push(`    max_total_usd: ${b.budget.max_total_usd}`);
+      if (b.budget.action) lines.push(`    action: ${b.budget.action}`);
     }
   }
 
@@ -405,29 +512,47 @@ interface ReplayCall {
  * stub must return a `balance` that reproduces the violation on replay. We read
  * the exact figure back out of the recorded violation details.
  */
-function outputSeeds(events: JSONLEvent[]): Record<string, Record<string, unknown>> {
+export function outputSeeds(events: JSONLEvent[]): Record<string, Record<string, unknown>> {
   const seeds: Record<string, Record<string, unknown>> = {};
-  const put = (tool: string, field: string, value: unknown) => {
-    (seeds[tool] ??= {})[field] = value;
+  const put = (ref: string | undefined, value: unknown) => {
+    if (!ref) return;
+    const [tool, kind, field] = ref.split(".");
+    if (kind === "output" && tool && field) (seeds[tool] ??= {})[field] = value;
   };
   for (const e of events) {
+    // Structured violations carry the ref path and the recorded ref value.
+    for (const v of e.violations ?? []) {
+      const sv = v as StructuredViolation;
+      if (sv.type === "max_ref") put(sv.ref, Number(sv.expected));
+      else if (sv.type === "cross_ref") put(sv.ref, sv.expected);
+    }
+    if (e.violations && e.violations.length > 0) continue;
+    // Legacy corpora: parse the details string.
     const d = e.details ?? "";
     if (e.reason === "max_ref") {
       const m = d.match(/exceeds max ([\d.]+) \(from ([\w.]+)\)/);
-      if (m) {
-        const [tool, kind, field] = m[2]!.split(".");
-        if (kind === "output" && tool && field) put(tool, field, Number(m[1]));
-      }
+      if (m) put(m[2], Number(m[1]));
     } else if (e.reason === "cross_ref") {
       const m = d.match(/expected "([^"]*)" \(from ([\w.]+)\)/);
-      if (m) {
-        const [tool, kind, field] = m[2]!.split(".");
-        if (kind === "output" && tool && field) put(tool, field, m[1]);
-      }
+      if (m) put(m[2], m[1]);
     }
   }
   return seeds;
 }
+
+/**
+ * Cluster key for a denial: (tool, rule, field). Fifty receipts tripping the
+ * same rule on the same tool produce ONE representative regression test.
+ */
+export function clusterKey(event: JSONLEvent): string | null {
+  if (!DENIED_RESULTS.has(event.result)) return null;
+  const first = event.violations?.[0];
+  const rule = first?.type ?? event.reason ?? "unknown";
+  const field = first?.field ?? "";
+  return `${event.tool} ${rule} ${field}`;
+}
+
+const DENIED_RESULTS = new Set(["blocked", "rejected", "killed"]);
 
 export function generateTestFile(opts: {
   events: JSONLEvent[];
@@ -435,6 +560,8 @@ export function generateTestFile(opts: {
   fromPath: string;
   testPath: string;
   timestamp: string;
+  /** SHA-256 of the source corpus, linking the test back to its receipts. */
+  sourceHash?: string;
   importSpecifier?: string;
 }): string {
   const { events, spec, fromPath, testPath, timestamp } = opts;
@@ -458,35 +585,21 @@ export function generateTestFile(opts: {
 
   const yaml = serializeSpec(spec);
 
-  return `// generated by: agentmint learn --from ${fromPath} --test ${testPath}
-// source: ${events.length} events, ${violations} violations, ${timestamp}
-// re-run the learn command to regenerate after policy changes
-import { describe, it, expect } from "vitest";
-import { harden, loadSpec } from ${JSON.stringify(importFrom)};
+  // Cluster denials by (tool, rule, field): one representative test per
+  // cluster, replaying the EXACT recorded prefix up to its first occurrence.
+  const clusters = new Map<string, { firstIndex: number; count: number; call: ReplayCall }>();
+  events.forEach((e, i) => {
+    const key = clusterKey(e);
+    if (!key) return;
+    const existing = clusters.get(key);
+    if (existing) existing.count++;
+    else clusters.set(key, { firstIndex: i, count: 1, call: calls[i]! });
+  });
 
-const SPEC = ${JSON.stringify(yaml)};
-
-// The recorded call sequence, replayed in order so stateful rules (requires,
-// cross_ref/max_ref, loop breakers) reproduce exactly.
-const CALLS = ${JSON.stringify(calls, null, 2)};
-
-// Stub tools. Return values don't matter for blocked calls (enforcement runs
-// before execution); outputs referenced by cross_ref/max_ref rules are seeded
-// so those rules re-fire on replay.
-function makeTools() {
-  return {
-${stubLines.join("\n")}
-  };
-}
-
-describe("learned policy regression (from ${fromPath})", () => {
-${calls
-  .map((c, i) =>
-    c.result === "allowed"
-      ? null
-      : `  it(${JSON.stringify(
-          `re-blocks ${c.tool} [${c.reason}] (call ${i + 1})`,
-        )}, async () => {
+  const denialTests = [...clusters.entries()]
+    .map(([key, { firstIndex: i, count, call: c }]) => {
+      const label = `re-blocks ${key.trim()} (call ${i + 1}${count > 1 ? `, +${count - 1} duplicate${count > 2 ? "s" : ""} collapsed` : ""})`;
+      return `  it(${JSON.stringify(label)}, async () => {
     const tools = harden(makeTools(), { spec: loadSpec(SPEC), silent: true });
     let last;
     for (let k = 0; k <= ${i}; k++) {
@@ -498,10 +611,34 @@ ${calls
     expect(last.tool).toBe(${JSON.stringify(c.tool)});
     expect(last.result).toBe(${JSON.stringify(c.result)});
     expect(last.reason).toBe(${JSON.stringify(c.reason)});
-  });`,
-  )
-  .filter(Boolean)
-  .join("\n\n")}
+  });`;
+    })
+    .join("\n\n");
+
+  return `// generated by: agentmint learn --from ${fromPath} --test ${testPath}
+// source: ${events.length} events, ${violations} violations, ${timestamp}
+${opts.sourceHash ? `// source corpus sha256: ${opts.sourceHash}\n` : ""}// hermetic: replays recorded calls against stub tools — no network, no model.
+// re-run the learn command to regenerate after policy changes
+import { describe, it, expect } from "vitest";
+import { harden, loadSpec } from ${JSON.stringify(importFrom)};
+
+const SPEC = ${JSON.stringify(yaml)};
+
+// The recorded call sequence, replayed in order so stateful rules (requires,
+// cross_ref/max_ref, loop breakers, usage caps) reproduce exactly.
+const CALLS = ${JSON.stringify(calls, null, 2)};
+
+// Stub tools. Return values don't matter for blocked calls (enforcement runs
+// before execution); outputs referenced by cross_ref/max_ref rules are seeded
+// from the recorded violations so stateful rules re-fire deterministically.
+function makeTools() {
+  return {
+${stubLines.join("\n")}
+  };
+}
+
+describe("learned policy regression (from ${fromPath})", () => {
+${denialTests}
 
   it("still allows every call the policy does not forbid", async () => {
     const tools = harden(makeTools(), { spec: loadSpec(SPEC), silent: true });
@@ -517,6 +654,208 @@ ${calls
   });
 });
 `;
+}
+
+// ── Replay engine + policy-diff safety ──────────────────────────────
+
+export interface ReplayOutcome {
+  tool: string;
+  /** Events appended to the log by replaying this one call. */
+  delta: Array<{ result: string; reason?: string }>;
+  /** True when the call reached execution (an "allowed" event was logged). */
+  executed: boolean;
+}
+
+/**
+ * Replay a recorded corpus through harden() with a given policy, in-process
+ * and hermetic (stub tools, outputs seeded from the recorded violations).
+ * Returns one outcome per corpus event.
+ */
+export async function replayCorpus(
+  events: JSONLEvent[],
+  spec: AgentMintSpec,
+): Promise<ReplayOutcome[]> {
+  const { harden } = await import("./harden.js");
+  const seeds = outputSeeds(events);
+  const stubs: Record<string, () => Promise<unknown>> = {};
+  for (const name of new Set(events.map((e) => e.tool))) {
+    stubs[name] = async () => seeds[name] ?? { ok: true };
+  }
+  const tools = harden(stubs, { spec, silent: true });
+  const outcomes: ReplayOutcome[] = [];
+  let logStart = 0;
+  for (const event of events) {
+    await (tools as unknown as Record<string, (p: unknown) => Promise<unknown>>)[event.tool]!(
+      event.params ?? {},
+    );
+    const log = tools.__log();
+    const delta = log.slice(logStart).map((e) => ({ result: e.result as string, reason: e.reason }));
+    logStart = log.length;
+    outcomes.push({
+      tool: event.tool,
+      delta,
+      executed: delta.some((d) => d.result === "allowed"),
+    });
+  }
+  return outcomes;
+}
+
+export interface ReopenedHole {
+  /** 0-based index into the corpus. */
+  index: number;
+  tool: string;
+  /** The rule that caught this call in the recorded corpus. */
+  originalReason: string;
+  /** What the new policy does with the same call. */
+  nowResult: string;
+}
+
+export interface PolicyCheckResult {
+  /** Previously-blocked failures the new policy would now let execute. */
+  reopened: ReopenedHole[];
+  /** Distinct (tool, rule, field) clusters checked. */
+  clustersChecked: number;
+}
+
+/**
+ * Policy-diff safety: replay a receipt corpus against a NEW policy and report
+ * every previously-caught failure the new policy would now ALLOW — the "you
+ * just reopened a hole" detector.
+ */
+export async function checkPolicy(
+  events: JSONLEvent[],
+  newSpec: AgentMintSpec,
+): Promise<PolicyCheckResult> {
+  const outcomes = await replayCorpus(events, newSpec);
+  const reopened: ReopenedHole[] = [];
+  const clusters = new Set<string>();
+  events.forEach((event, index) => {
+    const key = clusterKey(event);
+    if (!key) return;
+    clusters.add(key);
+    const outcome = outcomes[index]!;
+    if (outcome.executed) {
+      reopened.push({
+        index,
+        tool: event.tool,
+        originalReason: event.violations?.[0]?.type ?? event.reason ?? "unknown",
+        nowResult: outcome.delta[outcome.delta.length - 1]?.result ?? "allowed",
+      });
+    }
+  });
+  return { reopened, clustersChecked: clusters.size };
+}
+
+// ── Repair suggestion ───────────────────────────────────────────────
+
+/** Deep "does the existing spec already express this rule" checks. */
+function toolRuleMissing(existing: SpecToolConfig | undefined, inferred: SpecToolConfig): SpecToolConfig | null {
+  const missing: SpecToolConfig = {};
+  if (inferred.action && !existing?.action) missing.action = inferred.action;
+  const missingReqs = (inferred.requires ?? []).filter((r) => !(existing?.requires ?? []).includes(r));
+  if (missingReqs.length > 0) missing.requires = missingReqs;
+  if (inferred.cost?.max_cost_usd !== undefined && existing?.cost?.max_cost_usd === undefined) {
+    missing.cost = inferred.cost;
+  }
+  if (inferred.limits?.max_calls_per_run !== undefined && existing?.limits?.max_calls_per_run === undefined) {
+    missing.limits = inferred.limits;
+  }
+  for (const dir of ["input", "output"] as const) {
+    for (const [field, prop] of Object.entries(inferred[dir]?.properties ?? {})) {
+      const have = existing?.[dir]?.properties?.[field];
+      const missingProp: SpecPropertyConfig = {};
+      if (prop.cross_ref && have?.cross_ref !== prop.cross_ref) missingProp.cross_ref = prop.cross_ref;
+      if (prop.max_ref && have?.max_ref !== prop.max_ref) missingProp.max_ref = prop.max_ref;
+      const missingPatterns = (prop.blocked_patterns ?? []).filter(
+        (x) => !(have?.blocked_patterns ?? []).includes(x),
+      );
+      if (missingPatterns.length > 0) missingProp.blocked_patterns = missingPatterns;
+      const missingValues = (prop.blocked_values ?? []).filter(
+        (x) => !(have?.blocked_values ?? []).includes(x),
+      );
+      if (missingValues.length > 0) missingProp.blocked_values = missingValues;
+      if (Object.keys(missingProp).length > 0) {
+        if (prop.action) missingProp.action = prop.action;
+        if (!missing[dir]) missing[dir] = {};
+        if (!missing[dir]!.properties) missing[dir]!.properties = {};
+        missing[dir]!.properties![field] = missingProp;
+      }
+    }
+  }
+  return Object.keys(missing).length > 0 ? missing : null;
+}
+
+/** The subset of `inferred` that `existing` does not already express. */
+export function specDiffMissing(existing: AgentMintSpec, inferred: AgentMintSpec): AgentMintSpec {
+  const missing: AgentMintSpec = { version: existing.version || "1.0" };
+  for (const [tool, cfg] of Object.entries(inferred.tools ?? {})) {
+    const m = toolRuleMissing(existing.tools?.[tool], cfg);
+    if (m) {
+      if (!missing.tools) missing.tools = {};
+      missing.tools[tool] = m;
+    }
+  }
+  const b = inferred.breakers;
+  if (b) {
+    const eb = existing.breakers;
+    const mb: SpecBreakerConfig = {};
+    if (b.loop && !eb?.loop) mb.loop = b.loop;
+    if (b.velocity && !eb?.velocity) mb.velocity = b.velocity;
+    if (b.cost && !eb?.cost) mb.cost = b.cost;
+    if (b.budget && !eb?.budget) mb.budget = b.budget;
+    if (Object.keys(mb).length > 0) missing.breakers = mb;
+  }
+  return missing;
+}
+
+export interface RepairSuggestion {
+  /** The rules the current policy is missing, as a spec fragment. */
+  missing: AgentMintSpec;
+  /** YAML snippet to add, with comments citing the source receipts. */
+  snippet: string;
+  /** The full merged policy (existing + missing). */
+  merged: AgentMintSpec;
+}
+
+/**
+ * When the corpus shows failures the current policy does NOT catch, emit the
+ * exact YAML to add — each rule annotated with the receipt it came from —
+ * plus the merged policy.
+ */
+export function suggestRepair(events: JSONLEvent[], existing: AgentMintSpec): RepairSuggestion {
+  const inferred = inferSpec(events);
+  const missing = specDiffMissing(existing, inferred);
+  const merged = mergeSpecs(existing, missing);
+
+  // Citation per tool: the first denial event for that tool.
+  const citation = (tool: string): string | undefined => {
+    const e = events.find((ev) => ev.tool === tool && isViolation(ev));
+    if (!e) return undefined;
+    return `learned from run ${e.runId} @ ${e.timestamp} (${e.violations?.[0]?.type ?? e.reason})`;
+  };
+
+  const raw = serializeSpec(missing);
+  const lines: string[] = [];
+  for (const line of raw.split("\n")) {
+    const toolMatch = line.match(/^ {2}(\S+):$/);
+    if (toolMatch && missing.tools?.[toolMatch[1]!]) {
+      const cite = citation(toolMatch[1]!);
+      if (cite) lines.push(`  # ${cite}`);
+    }
+    if (line === "breakers:") {
+      const e = events.find(
+        (ev) => isViolation(ev) && /breaker|budget_cap/.test(ev.violations?.[0]?.type ?? ev.reason ?? ""),
+      );
+      if (e) lines.push(`# learned from run ${e.runId} @ ${e.timestamp} (${e.violations?.[0]?.type ?? e.reason})`);
+    }
+    lines.push(line);
+  }
+  return { missing, snippet: lines.join("\n"), merged };
+}
+
+/** True when a repair suggestion actually contains new rules. */
+export function hasMissingRules(missing: AgentMintSpec): boolean {
+  return Object.keys(missing.tools ?? {}).length > 0 || Object.keys(missing.breakers ?? {}).length > 0;
 }
 
 function serializeProps(
