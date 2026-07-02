@@ -1,0 +1,347 @@
+{
+  "aerf_conformance": "1.0",
+  "algorithm": "Ed25519",
+  "canonicalization": "RFC8785/JCS; verify replays number lexemes verbatim",
+  "post_issuance_fields": [
+    "issuer_signature",
+    "issuer_key_id",
+    "issuer_public_key",
+    "issued_at",
+    "record_hash"
+  ],
+  "signer": {
+    "public_key_pem": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASn7jURXtfCw4KFwsztOZN5OoqxovSY1O0G5HxNgZoLM=\n-----END PUBLIC KEY-----\n",
+    "public_key_raw_hex": "4a7ee35115ed7c2c38285c2cced3993793a8ab1a2f498d4ed06e47c4d819a0b3",
+    "key_id": "252b2ab011ce9828224e37b0079fbb941fda45bf81bd04c4d8f96b0b6270350a"
+  },
+  "vectors": [
+    {
+      "id": "01",
+      "description": "refund with float amount lexeme 1250.0 (verbatim-preserved)",
+      "expect": "verify",
+      "record": {
+        "aerf_version": "1.0",
+        "receipt_id": "rcpt_0001",
+        "agent": "refund-bot",
+        "tool": "refund_order",
+        "inputs": {
+          "order_id": "A-1002",
+          "amount": 1250.0,
+          "currency": "USD"
+        },
+        "outputs": {
+          "status": "refunded",
+          "refund_id": "rf_88"
+        },
+        "occurred_at": "2026-07-01T12:00:00Z",
+        "prev_hash": null,
+        "issued_at": "2026-07-01T12:00:05Z",
+        "issuer_public_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASn7jURXtfCw4KFwsztOZN5OoqxovSY1O0G5HxNgZoLM=\n-----END PUBLIC KEY-----\n",
+        "issuer_key_id": "252b2ab011ce9828224e37b0079fbb941fda45bf81bd04c4d8f96b0b6270350a",
+        "record_hash": "eb7ba951040ae35a49d49962a52979cc7c3eb1d122dbf81b844763db349ddb81",
+        "issuer_signature": "03281361b78507c8c37fb8989bd78ddf17b4bceaf900feac301a082ab73f2d52f258f99070b6a8897e0160871bc6a5eb218dea85d0c995312c0d20f946fc4f05"
+      }
+    },
+    {
+      "id": "02",
+      "description": "order lookup, integers only",
+      "expect": "verify",
+      "record": {
+        "aerf_version": "1.0",
+        "receipt_id": "rcpt_0002",
+        "agent": "refund-bot",
+        "tool": "lookup_order",
+        "inputs": {
+          "order_id": "A-1002"
+        },
+        "outputs": {
+          "found": true,
+          "total_cents": 125000,
+          "items": 3
+        },
+        "occurred_at": "2026-07-01T12:00:00Z",
+        "prev_hash": null,
+        "issued_at": "2026-07-01T12:00:05Z",
+        "issuer_public_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASn7jURXtfCw4KFwsztOZN5OoqxovSY1O0G5HxNgZoLM=\n-----END PUBLIC KEY-----\n",
+        "issuer_key_id": "252b2ab011ce9828224e37b0079fbb941fda45bf81bd04c4d8f96b0b6270350a",
+        "record_hash": "9d5e5c595674972a0eb0e986bd064b5646a692a57fa873c2700bef9131a85b5f",
+        "issuer_signature": "c76f47f61a6ba7227d41158b02b4abaedd55a40cca7d1cb313a4bc66efd091d29caf396d81305f851d701b54ac7e5040b803b892dec0c391273b6d31f68c7f01"
+      }
+    },
+    {
+      "id": "03",
+      "description": "file read within policy",
+      "expect": "verify",
+      "record": {
+        "aerf_version": "1.0",
+        "receipt_id": "rcpt_0003",
+        "agent": "coder",
+        "tool": "read_file",
+        "inputs": {
+          "path": "src/index.ts"
+        },
+        "outputs": {
+          "bytes": 4096
+        },
+        "occurred_at": "2026-07-01T12:00:00Z",
+        "prev_hash": null,
+        "issued_at": "2026-07-01T12:00:05Z",
+        "issuer_public_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASn7jURXtfCw4KFwsztOZN5OoqxovSY1O0G5HxNgZoLM=\n-----END PUBLIC KEY-----\n",
+        "issuer_key_id": "252b2ab011ce9828224e37b0079fbb941fda45bf81bd04c4d8f96b0b6270350a",
+        "record_hash": "ffbfac8c21a8271ffecd2464a44333724e99b5b08145c08be98c5eba08894331",
+        "issuer_signature": "3e1849fe305bc84ce4a88db7a139a3572e8d7f34e0f18e874c0857557a9ae09f0a14dce08b9b7f3f3d07ff26acca4001f80e07ab170338c3afc685e03a394006"
+      }
+    },
+    {
+      "id": "04",
+      "description": "shell command",
+      "expect": "verify",
+      "record": {
+        "aerf_version": "1.0",
+        "receipt_id": "rcpt_0004",
+        "agent": "coder",
+        "tool": "run_command",
+        "inputs": {
+          "cmd": "npm test"
+        },
+        "outputs": {
+          "exit_code": 0
+        },
+        "occurred_at": "2026-07-01T12:00:00Z",
+        "prev_hash": null,
+        "issued_at": "2026-07-01T12:00:05Z",
+        "issuer_public_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASn7jURXtfCw4KFwsztOZN5OoqxovSY1O0G5HxNgZoLM=\n-----END PUBLIC KEY-----\n",
+        "issuer_key_id": "252b2ab011ce9828224e37b0079fbb941fda45bf81bd04c4d8f96b0b6270350a",
+        "record_hash": "dbc1213778fe8a6af59b1e360cab6af75e80304ba80708eb2a9d8b76a879af28",
+        "issuer_signature": "8f63200a816aea612485238a922911c3614cecd49f918be84b8d314f9da5c7919dbb648636bf76fd3de21ff72842fb3a86d34878b713358fec0ea437c3673a00"
+      }
+    },
+    {
+      "id": "05",
+      "description": "git push to a feature branch",
+      "expect": "verify",
+      "record": {
+        "aerf_version": "1.0",
+        "receipt_id": "rcpt_0005",
+        "agent": "coder",
+        "tool": "git_push",
+        "inputs": {
+          "branch": "feature/x",
+          "remote": "origin"
+        },
+        "outputs": {
+          "pushed": true
+        },
+        "occurred_at": "2026-07-01T12:00:00Z",
+        "prev_hash": null,
+        "issued_at": "2026-07-01T12:00:05Z",
+        "issuer_public_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASn7jURXtfCw4KFwsztOZN5OoqxovSY1O0G5HxNgZoLM=\n-----END PUBLIC KEY-----\n",
+        "issuer_key_id": "252b2ab011ce9828224e37b0079fbb941fda45bf81bd04c4d8f96b0b6270350a",
+        "record_hash": "c0aa3109335a0fc8ba40890f259e8bd504f76ed77fd4ea76d7b62273ae339db6",
+        "issuer_signature": "eed0559a99e01e08901abe0079ef16d087401fbc8a352f18e88bb9505cfcd00936fba972bfe86d69f2d575c76a0137e39bd54fc73feb278e8a28194e1c761b0a"
+      }
+    },
+    {
+      "id": "06",
+      "description": "web search with array output",
+      "expect": "verify",
+      "record": {
+        "aerf_version": "1.0",
+        "receipt_id": "rcpt_0006",
+        "agent": "researcher",
+        "tool": "search_web",
+        "inputs": {
+          "query": "aerf spec"
+        },
+        "outputs": {
+          "hits": [
+            "a",
+            "b",
+            "c"
+          ],
+          "count": 3
+        },
+        "occurred_at": "2026-07-01T12:00:00Z",
+        "prev_hash": null,
+        "issued_at": "2026-07-01T12:00:05Z",
+        "issuer_public_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASn7jURXtfCw4KFwsztOZN5OoqxovSY1O0G5HxNgZoLM=\n-----END PUBLIC KEY-----\n",
+        "issuer_key_id": "252b2ab011ce9828224e37b0079fbb941fda45bf81bd04c4d8f96b0b6270350a",
+        "record_hash": "54669dfb8f261c7651fc55162202a88aead8b6a2ca60958e964811388b35c686",
+        "issuer_signature": "962dbf05d2af4b60547f8fc62506b1e55bb2b8a6524c4447f318b5a0ee9ab39232d8aeff2b87e36b570c417f5df2ce107d58663950e9aa6b50afe1725ff6ce00"
+      }
+    },
+    {
+      "id": "07",
+      "description": "deeply nested inputs / arrays of objects",
+      "expect": "verify",
+      "record": {
+        "aerf_version": "1.0",
+        "receipt_id": "rcpt_0007",
+        "agent": "planner",
+        "tool": "plan",
+        "inputs": {
+          "steps": [
+            {
+              "n": 1,
+              "name": "scope"
+            },
+            {
+              "n": 2,
+              "name": "build"
+            }
+          ],
+          "meta": {
+            "depth": 2,
+            "flags": [
+              true,
+              false,
+              null
+            ]
+          }
+        },
+        "outputs": {
+          "ok": true
+        },
+        "occurred_at": "2026-07-01T12:00:00Z",
+        "prev_hash": null,
+        "issued_at": "2026-07-01T12:00:05Z",
+        "issuer_public_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASn7jURXtfCw4KFwsztOZN5OoqxovSY1O0G5HxNgZoLM=\n-----END PUBLIC KEY-----\n",
+        "issuer_key_id": "252b2ab011ce9828224e37b0079fbb941fda45bf81bd04c4d8f96b0b6270350a",
+        "record_hash": "246facd3359d737e93e4e17ae1d36f72d499b54dc3566e1fb18b9c0f9f3e9b02",
+        "issuer_signature": "4839c468ae40bbe65e26fdc9aaa8ccf4a7cb639c44528ee572eb0b99405dd9fad70553f2e50a759ab65033d14334364cc11a7b6c96e641d0b988baec5b42e306"
+      }
+    },
+    {
+      "id": "08",
+      "description": "negative and zero integers, -0 normalized",
+      "expect": "verify",
+      "record": {
+        "aerf_version": "1.0",
+        "receipt_id": "rcpt_0008",
+        "agent": "ledger",
+        "tool": "adjust",
+        "inputs": {
+          "delta": -50,
+          "zero": 0,
+          "big": 2147483647
+        },
+        "outputs": {
+          "balance": 0
+        },
+        "occurred_at": "2026-07-01T12:00:00Z",
+        "prev_hash": null,
+        "issued_at": "2026-07-01T12:00:05Z",
+        "issuer_public_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASn7jURXtfCw4KFwsztOZN5OoqxovSY1O0G5HxNgZoLM=\n-----END PUBLIC KEY-----\n",
+        "issuer_key_id": "252b2ab011ce9828224e37b0079fbb941fda45bf81bd04c4d8f96b0b6270350a",
+        "record_hash": "5902ea58c96da414bc4286e35856e0aff6f16bf30b0ad6e03448179ca151fd52",
+        "issuer_signature": "322a2d895d2094cb769e8b1cf4cfff6b32e0250ab24547bbb6046743231397298f52f4beeb95a1fa6c35678c6616b91b894aeb32e509c7882b15721dbcb34d0f"
+      }
+    },
+    {
+      "id": "09",
+      "description": "booleans, null, empty containers",
+      "expect": "verify",
+      "record": {
+        "aerf_version": "1.0",
+        "receipt_id": "rcpt_0009",
+        "agent": "gate",
+        "tool": "approve",
+        "inputs": {
+          "approved": false,
+          "reason": null,
+          "extra": {},
+          "tags": []
+        },
+        "outputs": {
+          "blocked": true
+        },
+        "occurred_at": "2026-07-01T12:00:00Z",
+        "prev_hash": null,
+        "issued_at": "2026-07-01T12:00:05Z",
+        "issuer_public_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASn7jURXtfCw4KFwsztOZN5OoqxovSY1O0G5HxNgZoLM=\n-----END PUBLIC KEY-----\n",
+        "issuer_key_id": "252b2ab011ce9828224e37b0079fbb941fda45bf81bd04c4d8f96b0b6270350a",
+        "record_hash": "934123588dbdf84d5ce50050bc02a92add794ff49222770ad8dddc78012f166e",
+        "issuer_signature": "da40a3a52b0a6c792767b200acd0e12535a59a3c12836ded5d816d31fd1fe2a250d7b31c9a428258fe6d3788649c69b3c6a63fb7395448acc1b6cddad1b30f00"
+      }
+    },
+    {
+      "id": "10",
+      "description": "chained receipt with a non-null prev_hash",
+      "expect": "verify",
+      "record": {
+        "aerf_version": "1.0",
+        "receipt_id": "rcpt_0010",
+        "agent": "ledger",
+        "tool": "commit",
+        "inputs": {
+          "entry": "E-10"
+        },
+        "outputs": {
+          "ok": true
+        },
+        "occurred_at": "2026-07-01T12:00:00Z",
+        "prev_hash": "3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1b",
+        "issued_at": "2026-07-01T12:00:05Z",
+        "issuer_public_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASn7jURXtfCw4KFwsztOZN5OoqxovSY1O0G5HxNgZoLM=\n-----END PUBLIC KEY-----\n",
+        "issuer_key_id": "252b2ab011ce9828224e37b0079fbb941fda45bf81bd04c4d8f96b0b6270350a",
+        "record_hash": "b9bcc19d59eb5088e0c9d2501d821789b57084758e9c584ef8a544374e7a0c46",
+        "issuer_signature": "d9707962bdbecf66557615794ed6c54cc79d098dfeb474582a2fe7f24d05630c5874f30fa427aaf2b70ba3e64e8e3f0b8ef3676ba2a94a7c4a3278a5f286b606"
+      }
+    },
+    {
+      "id": "11",
+      "description": "TAMPER: vector 01 float amount changed 1250.0 -> 1300.0",
+      "expect": "fail",
+      "fails_on": "issuer_signature",
+      "record": {
+        "aerf_version": "1.0",
+        "receipt_id": "rcpt_0001",
+        "agent": "refund-bot",
+        "tool": "refund_order",
+        "inputs": {
+          "order_id": "A-1002",
+          "amount": 1300.0,
+          "currency": "USD"
+        },
+        "outputs": {
+          "status": "refunded",
+          "refund_id": "rf_88"
+        },
+        "occurred_at": "2026-07-01T12:00:00Z",
+        "prev_hash": null,
+        "issued_at": "2026-07-01T12:00:05Z",
+        "issuer_public_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASn7jURXtfCw4KFwsztOZN5OoqxovSY1O0G5HxNgZoLM=\n-----END PUBLIC KEY-----\n",
+        "issuer_key_id": "252b2ab011ce9828224e37b0079fbb941fda45bf81bd04c4d8f96b0b6270350a",
+        "record_hash": "3cf3c6cb7fa1e90f30a5dcda7aa884cdd74964b4bf0a3078f59b77eaad278cd0",
+        "issuer_signature": "03281361b78507c8c37fb8989bd78ddf17b4bceaf900feac301a082ab73f2d52f258f99070b6a8897e0160871bc6a5eb218dea85d0c995312c0d20f946fc4f05"
+      }
+    },
+    {
+      "id": "12",
+      "description": "TAMPER: vector 02 output total_cents 125000 -> 1",
+      "expect": "fail",
+      "fails_on": "issuer_signature",
+      "record": {
+        "aerf_version": "1.0",
+        "receipt_id": "rcpt_0002",
+        "agent": "refund-bot",
+        "tool": "lookup_order",
+        "inputs": {
+          "order_id": "A-1002"
+        },
+        "outputs": {
+          "found": true,
+          "total_cents": 1,
+          "items": 3
+        },
+        "occurred_at": "2026-07-01T12:00:00Z",
+        "prev_hash": null,
+        "issued_at": "2026-07-01T12:00:05Z",
+        "issuer_public_key": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEASn7jURXtfCw4KFwsztOZN5OoqxovSY1O0G5HxNgZoLM=\n-----END PUBLIC KEY-----\n",
+        "issuer_key_id": "252b2ab011ce9828224e37b0079fbb941fda45bf81bd04c4d8f96b0b6270350a",
+        "record_hash": "79e63c757ffd6fd99edcc436158c5cc1ccee21acc6facef8a1b9d89e6cb997ef",
+        "issuer_signature": "c76f47f61a6ba7227d41158b02b4abaedd55a40cca7d1cb313a4bc66efd091d29caf396d81305f851d701b54ac7e5040b803b892dec0c391273b6d31f68c7f01"
+      }
+    }
+  ]
+}
