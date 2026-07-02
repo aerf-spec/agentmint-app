@@ -9,7 +9,7 @@ import { join } from "node:path";
 import { Notary, FileReceiptSink } from "./notary.js";
 import { verifyAerfChain, legacyChainHash } from "./chain.js";
 import { buildAerfReceipt, aerfChainHash } from "./receipt-aerf.js";
-import { generateKeyPair, publicKeyToPem, privateKeyToPem } from "./kernel/sign.js";
+import { generateKeyPair, privateKeyToPem } from "./kernel/sign.js";
 import { readFileSync } from "node:fs";
 
 const planInit = {

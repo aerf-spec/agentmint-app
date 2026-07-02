@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import * as readline from "node:readline";
 import type { Readable } from "node:stream";
-import { bold, brand, dim, green, muted, red, yellow } from "./cli/color.js";
+import { bold, brand, dim, green, muted, red } from "./cli/color.js";
 
 // ── Types ──────────────────────────────────────────────────────────
 

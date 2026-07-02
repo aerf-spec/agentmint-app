@@ -29,8 +29,3 @@ export function parseJSONL(input: string): JSONLEvent[] {
     .filter((line) => line.trim().length > 0)
     .map((line) => JSON.parse(line) as JSONLEvent);
 }
-
-export function emitJSONL(event: Event, runId: string, stream?: NodeJS.WritableStream): void {
-  const line = JSON.stringify(eventToJSONL(event, runId)) + "\n";
-  (stream ?? process.stdout).write(line);
-}
