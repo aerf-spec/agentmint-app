@@ -1,132 +1,134 @@
-# agentmint-sdk
+# agentmint
 
-**Stop your agent from retrying, overspending, and breaking things — before the call runs**
+Cryptographic receipts for AI agent actions. Wrap a tool call, get a signed,
+hash-chained receipt; an auditor verifies it later — offline, with no
+agentmint code and no trust in the agent, the app, or us.
 
-## Why this exists
-
-AI agents act — they call tools, move money, touch records — but they leave no
-verifiable trace of what they did, when, or with what result. Regulators,
-auditors, and compliance teams can't trust what they can't verify, which is what
-keeps agentic workflows out of regulated environments.
-
-AgentMint sits at the tool boundary and turns every agent action into a signed,
-hash-chained receipt an auditor can verify later — without trusting the agent,
-the app, or the vendor.
-
-## How it works: wrap → receipt → verify
-
-```ts
-import {
-  createSession,
-  recordInput,
-  recordOutput,
-  buildRecord,
-  verify,
-} from "@npmsai/agentmint";
-
-// 1. WRAP — record each agent tool call into a session
-const session = createSession();
-recordInput(session, "issue_refund", { order_id: "A-1001", amount_usd: 40 });
-const result = await issueRefund({ order_id: "A-1001", amount_usd: 40 });
-recordOutput(session, "issue_refund", result);
-
-// 2. RECEIPT — mint a signed, hash-chained record of what happened
-const receipt = buildRecord(state, config); // -> AERFRecord (JSONL-serializable)
-
-// 3. VERIFY — an auditor checks the receipt against the spec, later, offline
-const report = await verify({ dir: "./src", spec: "agentmint.spec.yaml" });
-console.log(report.summary); // { verified, failed, unverified, blocked }
-```
-
-Zero runtime dependencies. Dual ESM/CJS. Node `>=18`. Python coming soon.
-
-## Install
+Zero runtime dependencies (`node:crypto` only). Dual ESM/CJS. Node ≥ 18. MIT.
 
 ```
 npm install @npmsai/agentmint
 ```
 
-## Core API
+## The problem
 
-### 1. `buildRecord()` — mint a signed receipt for an agent run
+Agents act — they call tools, move money, touch records — and the record of
+what they did is usually a mutable log line the same process could rewrite or
+quietly drop. That gap is now a named one: the EU AI Act requires high-risk
+systems to keep tamper-evident event records ([Article 12](https://artificialintelligenceact.eu/article/12/)),
+the [OWASP GenAI Security Project](https://genai.owasp.org/) lists
+repudiation and untraceable agent actions among its core agentic threats, and
+audit frameworks (SOC 2, AIUC-1) increasingly ask for evidence that a control
+*ran*, not a claim that it exists.
 
-Turns the run state captured at the tool boundary into an `AERFRecord`: a
-tamper-evident summary of every tool call, its result, bound values, and an
-optional Merkle root over the event chain.
+The primitives to close the gap are old and boring, which is the good part:
+Ed25519 signatures, hash chains, and RFC 6962 Merkle trees — the same
+construction Certificate Transparency uses. agentmint applies them at the
+agent tool boundary and implements the [AERF receipt
+format](https://github.com/aerf-spec/aerf), so receipts verify across
+independent implementations (this SDK, a Python producer, a Go verifier).
 
-```ts
-import { buildRecord, formatReceipt } from "@npmsai/agentmint";
+We won't oversell it: a receipt proves what was observed and signed, not what
+*should* have happened. If every signer sees the same poisoned input, they all
+sign it honestly — the spec documents these residuals, and so does
+[`docs/parity.md`](docs/parity.md). What receipts do make impossible is silent
+revision: a changed field breaks a signature, and a deleted receipt breaks the
+hash chain *and* the sequence numbers.
 
-const receipt = buildRecord(state, config);
-console.log(formatReceipt(state, config)); // human-readable receipt
-```
-
-### 2. `verify()` — verify a receipt or a set of changes against a spec
-
-Checks claims (invariants, policies, patterns, properties) and returns a
-`VerifyReceipt` — the evidence an auditor reads. Runs offline; no agent required.
-
-```ts
-import { verify, formatVerifyReceipt } from "@npmsai/agentmint";
-
-const receipt = await verify({ diff: "pr.diff", spec: "agentmint.spec.yaml" });
-console.log(formatVerifyReceipt(receipt));
-```
-
-### 3. `gate()` — pre-flight approval before an action runs
-
-Blocks on a human (console / Slack / webhook) before a risky action executes,
-and chains each decision into a hash chain so approvals are auditable too.
+## Wrap → receipt → verify
 
 ```ts
-import { gate } from "@npmsai/agentmint";
+import { harden, loadSpec } from "@npmsai/agentmint";
 
-const decision = await gate({ action: "deploy", context: { env: "prod" } });
-if (!decision.approved) throw new Error(`Denied: ${decision.reason}`);
-// decision.hash is chained to the previous gate call
+// One line: every tool call is now policy-checked and receipted.
+const tools = harden(myTools, {
+  spec: loadSpec("agentmint.spec.yaml"),
+  signing: { privateKeyPem },
+});
+
+await tools.issue_refund({ order_id: "A-1001", amount_usd: 40 });
+
+tools.__receipts();        // signed, hash-chained decision receipts
+tools.__verifyReceipts();  // { ok: true } — or the exact break index and why
 ```
 
-### 4. `createSession()` — group tool I/O into an auditable session
-
-Tracks tool inputs, outputs, and a hashed call history so receipts can be built
-and cross-tool references resolved.
+Or drive the notary directly for full AERF evidence receipts:
 
 ```ts
-import { createSession, recordInput, recordOutput, resolveRef } from "@npmsai/agentmint";
+import { Notary } from "@npmsai/agentmint";
 
-const session = createSession();
-recordInput(session, "lookup_order", { order_id: "A-1001" });
-recordOutput(session, "lookup_order", { total_usd: 40 });
+const notary = new Notary({ stateDir: "./state" }); // chains survive restarts
+const plan = notary.createPlan({
+  user: "admin@example.com",
+  action: "handle-claims",
+  scope: ["submit:claim:*"],
+  checkpoints: ["submit:claim:high-value:*"], // these always block
+});
+
+const receipt = notary.notarise({
+  action: "submit:claim:CLM-9920",
+  agent: "claims-agent",
+  plan,
+  evidence: { claim_id: "CLM-9920", amount_micros: 1250000000 },
+});
+
+notary.verifyChain(plan.id); // signatures + hash links + seq, per plan
 ```
 
-## What gets recorded
+Export everything for an auditor:
 
-Every receipt (`AERFRecord`) is JSONL-serializable evidence:
+```
+$ agentmint export --from receipts/ --out evidence.zip --plan plan.json --key notary_key.pem
+$ unzip evidence.zip && node verify.mjs     # standalone — Node only, no agentmint
+```
 
-| Field          | Description                                    | Example value            |
-| -------------- | ---------------------------------------------- | ------------------------ |
-| `runId`        | Unique id for the agent run                    | `"amr_abcd1234"`         |
-| `mode`         | `enforce` (blocking) or `shadow` (observe)     | `"enforce"`              |
-| `boundValues`  | Identity values pinned for the run             | `{ patient_id: "PT-100" }` |
-| `events[]`     | Each tool call: name, result, reason, params   | `{ tool: "issue_refund", result: "allowed" }` |
-| `summary`      | Calls, executed, blocked, held, cost, elapsed  | `{ calls: 4, blocked: 1 }` |
-| `evidenceRoot` | Merkle root over all events (when enabled)     | `"9f2c…"`                |
+## The failure → regression-test loop
 
-## Use cases
+When a policy catches an agent misbehaving, the receipts become training data
+for the policy itself:
 
-- SOC 2 Type II evidence for agentic workflows
-- AIUC-1 / EU AI Act compliance artifacts
-- Healthcare agent billing audit trails
-- Multi-agent pipeline integrity checks
+```
+$ agentmint learn --from receipts/incident.jsonl --out policy.yaml --test policy.test.ts
+$ npx vitest run policy.test.ts             # hermetic replay of the incident
+$ agentmint learn --from receipts/ --check policy.yaml   # exit 1 if an edit reopened a hole
+$ agentmint learn --from receipts/ --repair policy.yaml  # add missing rules, cited to receipts
+```
 
-## Experimental modules
+`npm run demo:learn` runs the whole loop, including `--check` catching a
+deliberately broken policy.
 
-Optional guardrails that build on the kernel but aren't part of the receipt
-wedge live in [`src/experimental/`](src/experimental/): budget caps, spec
-learning, the `harden()` one-line auto-wrapper, circuit breakers, enforcement,
-and framework adapters (OpenAI, Anthropic, LangChain, Vercel, raw). The
-always-on verification primitives they rely on live in
-[`src/kernel/`](src/kernel/).
+## Verify it yourself
+
+```
+$ node test/aerf-verify-poc.mjs   # 12/12 AERF conformance vectors
+$ npx vitest run                  # full suite, incl. cross-producer byte-match vs the Python reference
+$ npm run demo:trace              # control vs hardened run, gate internals
+$ npm run demo:silence            # why deleted receipts can't go unnoticed
+```
+
+The cross-producer tests build the same logical receipt here and in the
+Python reference producer from one Ed25519 seed and assert byte-identical
+canonical payloads and identical signatures. [`docs/parity.md`](docs/parity.md)
+documents every Python capability's status here, the wire-format guarantees,
+and the deliberate divergences.
+
+## Contributing
+
+Small project, early days, honest bar: the oracle stays 12/12 and
+`npx vitest run` stays green, or the change doesn't land.
+
+- **Bugs / questions** — open an issue with a receipt (or vector) that
+  reproduces it. A failing test is the best bug report.
+- **Wire-format changes** — belong in the [AERF spec](https://github.com/aerf-spec/aerf)
+  first; this SDK follows the spec, not the other way around.
+- **New guardrails / adapters** — start in `src/experimental/`; the kernel
+  (`src/kernel/`) stays zero-dependency and never imports experimental code.
+- Before a PR: `npx tsc --noEmit && npx vitest run && npm run build`.
+
+Talk to me: [aniketh@agentmint.run](mailto:aniketh@agentmint.run) ·
+[@aniketh745](https://x.com/aniketh745). If you're putting agents in front of
+real money or real records and receipts would help, I'd genuinely like to hear
+what breaks.
 
 ## License
 
