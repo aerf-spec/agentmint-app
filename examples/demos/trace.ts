@@ -5,6 +5,7 @@
 // gate line below is the REAL check enforce.ts evaluated for that call, surfaced
 // via config.onDecision. Verdicts, reasons, params hashes, and the receipt chain
 // are all real engine state; nothing here is simulated.
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { harden } from "../../src/experimental/harden.js";
@@ -15,8 +16,9 @@ import {
   publicKeyToPem,
 } from "../../src/kernel/sign.js";
 import { canonicalBytes, sha256Hex } from "../../src/kernel/canonical.js";
+import { formatJSONL } from "../../src/jsonl.js";
 import { verifyDecisionReceipts } from "../../src/receipt-decision.js";
-import type { AgentMintConfig, AgentMintSpec, DecisionInfo, DecisionReceipt } from "../../src/types.js";
+import type { AgentMintConfig, AgentMintSpec, DecisionInfo, DecisionReceipt, Event } from "../../src/types.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -132,6 +134,7 @@ async function main() {
   };
   const tools = harden(impls, config) as typeof impls & {
     __receipts(): DecisionReceipt[];
+    __log(): Event[];
   };
 
   for (const step of STEPS) {
@@ -159,6 +162,16 @@ async function main() {
 
   // ── receipts summary ──────────────────────────────────────────────
   const receipts = tools.__receipts();
+
+  // Export the event log as JSONL for downstream tooling (e.g. `agentmint
+  // learn`, which infers a spec + regression tests from these receipts).
+  const outDir = join(here, "out");
+  mkdirSync(outDir, { recursive: true });
+  writeFileSync(
+    join(outDir, "receipts.jsonl"),
+    formatJSONL(tools.__log(), receipts[0]?.run_id ?? "amr_demo") + "\n",
+  );
+
   console.log("=== receipts ===\n");
   for (const r of receipts) {
     const verdict = (r.in_policy ? "allow" : "deny").padEnd(5);
