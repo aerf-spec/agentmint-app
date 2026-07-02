@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { SessionStore } from "./types.js";
+import { canonicalize } from "./merkle.js";
 
 export function createSession(): SessionStore {
   return {
@@ -35,11 +36,8 @@ export function hashArgs(
   tool: string,
   params: Record<string, unknown>,
 ): string {
-  const sorted = Object.fromEntries(
-    Object.entries(params).sort(([a], [b]) => a.localeCompare(b)),
-  );
   return createHash("sha256")
-    .update(JSON.stringify({ tool, ...sorted }))
+    .update(canonicalize({ tool, params }))
     .digest("hex")
     .slice(0, 16);
 }

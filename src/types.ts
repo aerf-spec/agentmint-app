@@ -257,6 +257,63 @@ export interface AERFRecord {
   evidenceRoot?: string;
 }
 
+export type AERFPostIssuanceField =
+  | "signature"
+  | "timestamp"
+  | "parent_signature"
+  | "parent_key_id"
+  | "log_inclusion_proof";
+
+export interface ReceiptKeyPair {
+  publicKeyPem: string;
+  privateKeyPem: string;
+  rawPublicKeyHex: string;
+  keyId: string;
+}
+
+export interface SignedReceiptEnvelope {
+  key_id: string;
+  signature: string;
+  previous_receipt_hash?: string;
+  timestamp?: string;
+  parent_signature?: string;
+  parent_key_id?: string;
+  log_inclusion_proof?: unknown;
+}
+
+export type SignedReceipt<T extends Record<string, unknown> = Record<string, unknown>> = T &
+  SignedReceiptEnvelope;
+
+export interface SignReceiptOptions {
+  privateKeyPem: string;
+  publicKeyPem?: string;
+  previousReceipt?: Record<string, unknown>;
+  timestamp?: string;
+  parentSignature?: string;
+  parentKeyId?: string;
+  logInclusionProof?: unknown;
+}
+
+export interface VerifySignedReceiptOptions {
+  publicKeyPem: string;
+  previousReceipt?: Record<string, unknown>;
+}
+
+export interface VerifySignedReceiptSourceOptions {
+  publicKeyPem: string;
+  previousReceiptSource?: string;
+}
+
+export interface ReceiptVerificationResult {
+  valid: boolean;
+  keyId: string;
+  expectedKeyId: string;
+  canonical: string;
+  signature: string;
+  previousReceiptHash?: string;
+  reason?: string;
+}
+
 // ── Merkle ─────────────────────────────────────────────────────────
 
 export interface MerkleProof {
