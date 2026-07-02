@@ -101,8 +101,8 @@ function agg(runs: DiagRun[]): Agg {
   return {
     n: runs.length,
     promptMed: median(p),
-    promptMin: Math.min(...p, 0),
-    promptMax: Math.max(...p, 0),
+    promptMin: Math.min(...p),
+    promptMax: Math.max(...p),
     outMed: median(runs.map((r) => r.completionTokens)),
     reasonMed: median(runs.map((r) => Math.round(r.reasoningCharsEst / 4))),
     usdMed: median(

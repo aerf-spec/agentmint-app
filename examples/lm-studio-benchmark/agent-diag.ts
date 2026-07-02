@@ -16,7 +16,7 @@ import type { Task } from "./tasks/index.ts";
 import type { ShapeStats } from "./shape.ts";
 
 export const MAX_TURNS = 15;
-export const REQUEST_TIMEOUT_MS = 60_000;
+export const REQUEST_TIMEOUT_MS = 180_000;
 
 export type Arm = "baseline" | "hardened" | "shaped";
 
