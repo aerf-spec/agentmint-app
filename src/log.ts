@@ -47,6 +47,7 @@ export function createRunState(config: AgentMintConfig): RunState {
             runId,
             privateKeyPem: config.signing.privateKeyPem,
             spec: config.spec,
+            plan: config.plan,
           }),
         }
       : {}),

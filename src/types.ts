@@ -1,4 +1,5 @@
 import type { MerkleTree } from "./merkle.js";
+import type { PlanReceipt } from "./plan.js";
 
 // ── Actions & Results ──────────────────────────────────────────────
 
@@ -144,7 +145,13 @@ export interface Violation {
  * Violation object (bind, action_block, deny/allow lists).
  */
 export interface ReceiptViolation {
-  type: Violation["type"] | "bind_violation" | "action_block" | "denied" | "not_in_scope";
+  type:
+    | Violation["type"]
+    | "bind_violation"
+    | "action_block"
+    | "denied"
+    | "not_in_scope"
+    | "plan_policy";
   tool: string;
   field?: string;
   expected?: string;
@@ -158,6 +165,15 @@ export interface ReceiptViolation {
 /** What the developer passes to harden() */
 export interface AgentMintConfig {
   readonly spec?: AgentMintSpec;
+  /**
+   * Signed plan (policy envelope) this run operates under. Every call is
+   * evaluated against the plan (checkpoints block, scope allows, delegates_to
+   * restricts by agent, expiry denies), and every signed decision receipt
+   * binds to it via plan_id + plan_signature + policy_hash.
+   */
+  readonly plan?: PlanReceipt;
+  /** Acting agent identity checked against plan.delegates_to. Default "agent". */
+  readonly agent?: string;
   readonly bind?: Record<string, string>;
   readonly allow?: readonly string[];
   readonly deny?: readonly string[];
@@ -346,6 +362,12 @@ export interface DecisionReceipt {
   policy_reason: string;
   /** SHA-256 hex of canonical(spec), present only when a spec is configured. */
   spec_hash?: string;
+  /** Plan this decision binds to, present when config.plan is set. */
+  plan_id?: string;
+  /** The plan's signature — direct receipt→plan binding. */
+  plan_signature?: string;
+  /** SHA-256 hex of canonical {scope, checkpoints, delegates_to} of the plan. */
+  policy_hash?: string;
   /** ISO 8601 timestamp the decision was observed. */
   observed_at: string;
   /** Issuer key id (first 16 hex of SHA-256(raw public key)). */

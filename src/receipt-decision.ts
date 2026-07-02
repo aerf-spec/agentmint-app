@@ -19,6 +19,7 @@ import {
   signStripped,
   verifyStripped,
 } from "./kernel/sign.js";
+import { computePolicyHash, type PlanReceipt } from "./plan.js";
 
 /** Results that count as "in policy" — the action was permitted to run. */
 const IN_POLICY_RESULTS: ReadonlySet<EventResult> = new Set(["allowed", "approved"]);
@@ -33,6 +34,8 @@ export interface DecisionContext {
   publicKeyPem: string;
   keyId: string;
   specHash?: string;
+  /** Plan binding: every receipt carries plan_id + plan_signature + policy_hash. */
+  plan?: Pick<PlanReceipt, "id" | "signature" | "scope" | "checkpoints" | "delegates_to">;
   /** Last seq assigned (0 before any receipt). Mutated by buildDecisionReceipt. */
   seq: number;
   /** Hash of the previous receipt (incl. its signature). Undefined at genesis. */
@@ -46,6 +49,7 @@ export function createDecisionContext(opts: {
   runId: string;
   privateKeyPem: string;
   spec?: AgentMintSpec;
+  plan?: PlanReceipt;
 }): DecisionContext {
   const privateKey = privateKeyFromPem(opts.privateKeyPem);
   const publicKey = createPublicKey(privateKey);
@@ -54,6 +58,7 @@ export function createDecisionContext(opts: {
     privateKey,
     publicKeyPem: publicKeyToPem(publicKey),
     keyId: keyId(publicKey),
+    ...(opts.plan ? { plan: opts.plan } : {}),
     // Loose canonicalization: a spec is a policy document that may carry
     // fractional USD cost estimates, which strict (signed-payload) canonical
     // JSON forbids. This hash is a stable policy identity, not a signed payload.
@@ -97,6 +102,14 @@ export function buildDecisionReceipt(event: Event, ctx: DecisionContext): Decisi
     in_policy: inPolicy,
     policy_reason: policyReasonFor(event),
     ...(ctx.specHash !== undefined ? { spec_hash: ctx.specHash } : {}),
+    // Plan binding: receipt→plan linkage plus the policy identity it ran under.
+    ...(ctx.plan
+      ? {
+          plan_id: ctx.plan.id,
+          plan_signature: ctx.plan.signature,
+          policy_hash: computePolicyHash(ctx.plan),
+        }
+      : {}),
     observed_at: event.timestamp,
     key_id: ctx.keyId,
     ...(ctx.previousHash !== undefined ? { previous_receipt_hash: ctx.previousHash } : {}),

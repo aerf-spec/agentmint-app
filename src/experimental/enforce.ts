@@ -7,6 +7,7 @@ import type {
 } from "../types.js";
 import { matchesAny } from "./matcher.js";
 import { blockResponse, logEvent } from "../log.js";
+import { evaluatePolicy } from "../plan.js";
 import { recordInput, recordOutput } from "../session.js";
 import { validateInputCrossRefs, validateOutputCrossRefs, checkRequires } from "../kernel/cross-ref.js";
 import { checkBreakers } from "./breakers.js";
@@ -127,6 +128,30 @@ export async function enforce(
 
   // 3. Record input to session (must happen before breaker check so current call is counted)
   recordInput(state.session, tool, params);
+
+  // 3b. Plan policy (signed envelope): checkpoints block, scope allows,
+  //     delegates_to restricts by agent, expiry denies. Runs before the spec
+  //     rules — the plan is the outer authorization boundary.
+  if (config.plan) {
+    const evaluation = evaluatePolicy(tool, config.agent ?? "agent", config.plan);
+    check("plan policy?", evaluation.inPolicy, evaluation.reason);
+    if (!evaluation.inPolicy) {
+      state.blockedCount++;
+      logEvent(state, tool, params, "blocked", {
+        reason: "plan_policy",
+        details: evaluation.reason,
+        violations: [
+          { type: "plan_policy", tool, details: evaluation.reason, action: "block" },
+        ],
+      });
+      config.onBlock?.(tool, "plan_policy", evaluation.reason);
+      const blocked = blockResponse(tool, `${tool} is outside the plan: ${evaluation.reason}.`);
+      if (!shadow) {
+        emit("deny", "plan_policy", evaluation.reason);
+        return blocked;
+      }
+    }
+  }
 
   // 4. Circuit breakers (spec-driven)
   if (spec?.breakers) {

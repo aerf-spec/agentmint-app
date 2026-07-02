@@ -22,6 +22,9 @@ export * from "./receipt-decision.js";
 // Python producer and Go verifier)
 export * from "./receipt-aerf.js";
 
+// plan — signed policy envelopes receipts bind to
+export * from "./plan.js";
+
 // verify — check a receipt or a chain of receipts against its claims
 export * from "./verify.js";
 
